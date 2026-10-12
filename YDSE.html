@@ -567,12 +567,6 @@
                 <button class="particle-btn" data-type="electron" style="--accent-color:#7b2ffc">
                     <span class="emoji">⚡</span>Electron
                 </button>
-                <button class="particle-btn" data-type="neutron" style="--accent-color:#ff9500">
-                    <span class="emoji">🔵</span>Neutron
-                </button>
-                <button class="particle-btn" data-type="buckyball" style="--accent-color:#00ff88">
-                    <span class="emoji">⚽</span>C₆₀
-                </button>
             </div>
         </div>
 
@@ -632,46 +626,6 @@
                     <span class="value" id="numSlitsVal">2</span>
                 </div>
                 <input type="range" id="numSlits" min="1" max="6" value="2" step="1">
-            </div>
-        </div>
-
-        <!-- Quantum Options -->
-        <div class="section">
-            <div class="section-title"><span class="icon">🔬</span> Quantum Options</div>
-            <div class="toggle-row">
-                <span class="label">Which-Path Detector</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="detector">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="label">Show Wave Function</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="showWave" checked>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="label">Show Probability Cloud</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="showProbability">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="label">Single Particle Mode</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="singleParticle">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="label">Delayed Choice</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="delayedChoice">
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
         </div>
 
@@ -824,9 +778,7 @@
         // Colors for particle types
         const particleColors = {
             photon: { r: 0, g: 212, b: 255, name: 'Photon', mass: 0, desc: '<span class="highlight">Photons</span> exhibit wave-particle duality. Each photon passes through <span class="highlight">both slits simultaneously</span> as a probability wave, creating an interference pattern on the screen.' },
-            electron: { r: 123, g: 47, b: 252, name: 'Electron', mass: 9.109e-31, desc: '<span class="highlight">Electrons</span>, despite being matter particles, show <span class="highlight">wave-like interference</span>. Their de Broglie wavelength determines the fringe spacing. Observation collapses the wave function.' },
-            neutron: { r: 255, g: 149, b: 0, name: 'Neutron', mass: 1.675e-27, desc: '<span class="highlight">Neutrons</span> are massive particles that still exhibit <span class="highlight">quantum interference</span>. Their very short de Broglie wavelength requires extremely narrow slits.' },
-            buckyball: { r: 0, g: 255, b: 136, name: 'C₆₀ Fullerene', mass: 1.2e-24, desc: '<span class="highlight">Buckminsterfullerene (C₆₀)</span> molecules are the largest objects shown to exhibit <span class="highlight">quantum interference</span>, demonstrating the boundary between quantum and classical worlds.' }
+            electron: { r: 123, g: 47, b: 252, name: 'Electron', mass: 9.109e-31, desc: '<span class="highlight">Electrons</span>, despite being matter particles, show <span class="highlight">wave-like interference</span>. Their de Broglie wavelength determines the fringe spacing. Observation collapses the wave function.' }
         };
 
         // Resize
@@ -1899,20 +1851,9 @@
         function setupToggle(id, param) {
             document.getElementById(id).addEventListener('change', function() {
                 params[param] = this.checked;
-                
-                if (param === 'detector') {
-                    // Clear screen to show pattern change
-                    document.getElementById('equationBox').textContent = 
-                        this.checked ? 'Ψ collapsed — No interference' : 'Δy = λL / d';
-                }
             });
         }
 
-        setupToggle('detector', 'detector');
-        setupToggle('showWave', 'showWave');
-        setupToggle('showProbability', 'showProbability');
-        setupToggle('singleParticle', 'singleParticle');
-        setupToggle('delayedChoice', 'delayedChoice');
         setupToggle('glowEffects', 'glowEffects');
         setupToggle('trails', 'trails');
 
