@@ -531,6 +531,357 @@
         .tooltip:hover::after {
             opacity: 1;
         }
+
+        /* Student-friendly panels and textbook-style plot */
+        .control-panel,
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            overflow: hidden;
+        }
+
+        .control-panel {
+            width: 320px;
+        }
+
+        .info-panel {
+            width: 340px;
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 38px;
+            flex: 0 0 auto;
+            margin-bottom: 10px;
+        }
+
+        .panel-heading-copy {
+            min-width: 0;
+        }
+
+        .panel-eyebrow {
+            display: block;
+            margin-bottom: 3px;
+            color: #78849e;
+            font-size: 0.59em;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            color: #f1f5ff;
+            font-size: 0.98em;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            line-height: 1.2;
+        }
+
+        .panel-heading h2 .icon {
+            margin-right: 5px;
+            color: #00d4ff;
+        }
+
+        .panel-collapse {
+            display: inline-grid;
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            place-items: center;
+            border: 1px solid rgba(150, 170, 220, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #e5f7ff;
+            cursor: pointer;
+            font-size: 1.25em;
+            line-height: 1;
+            transition: background 0.2s, border-color 0.2s, transform 0.2s;
+        }
+
+        .panel-collapse:hover {
+            transform: translateY(-1px);
+            border-color: rgba(0, 212, 255, 0.45);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .panel-collapse:focus-visible,
+        .action-btn:focus-visible,
+        .view-btn:focus-visible,
+        .particle-btn:focus-visible {
+            outline: 2px solid #00d4ff;
+            outline-offset: 2px;
+        }
+
+        .panel-content {
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #39415a transparent;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            border-radius: 5px;
+            background: #39415a;
+        }
+
+        .control-panel.collapsed,
+        .info-panel.collapsed {
+            bottom: auto;
+            height: auto;
+            max-height: none;
+            padding: 10px 12px;
+        }
+
+        .control-panel.collapsed {
+            width: 224px;
+        }
+
+        .info-panel.collapsed {
+            width: 250px;
+        }
+
+        .control-panel.collapsed .panel-heading,
+        .info-panel.collapsed .panel-heading {
+            margin-bottom: 0;
+        }
+
+        .control-panel.collapsed .panel-content,
+        .info-panel.collapsed .panel-content {
+            display: none;
+        }
+
+        .control-panel .section:last-child {
+            margin-bottom: 2px;
+            padding-bottom: 0;
+        }
+
+        .slit-hint {
+            margin: -5px 0 12px;
+            color: #73809b;
+            font-size: 0.68em;
+            line-height: 1.45;
+        }
+
+        .stat-row {
+            gap: 14px;
+            align-items: baseline;
+        }
+
+        .stat-row .stat-name {
+            color: #aab4cb;
+        }
+
+        .stat-row .stat-val {
+            color: #7ce7ff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .physics-desc {
+            margin-top: 12px;
+            color: #b9c4d8;
+            font-size: 0.74em;
+        }
+
+        .physics-desc .highlight {
+            color: #73e5ff;
+            font-weight: 600;
+        }
+
+        .teaching-note {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-top: 9px;
+            padding: 9px 10px;
+            border: 1px solid rgba(255, 194, 91, 0.16);
+            border-radius: 9px;
+            background: rgba(255, 194, 91, 0.05);
+            color: #d8c8a6;
+            font-size: 0.69em;
+            line-height: 1.45;
+        }
+
+        .teaching-note strong {
+            color: #ffd47e;
+        }
+
+        .equation-box {
+            margin-top: 10px;
+            padding: 10px 12px;
+            color: #bdefff;
+        }
+
+        .equation-box .equation-main {
+            display: block;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        .equation-box .equation-note {
+            display: block;
+            margin-top: 5px;
+            color: #8594ad;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 0.82em;
+            line-height: 1.35;
+        }
+
+        .intensity-graph {
+            position: static;
+            display: block;
+            width: 100%;
+            height: auto;
+            margin-top: 14px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: #f8fafc;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            backdrop-filter: none;
+        }
+
+        .graph-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 0 2px 7px;
+            color: #24324a;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+
+        .graph-heading .graph-tag {
+            color: #6b7890;
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+        }
+
+        .intensity-graph canvas {
+            display: block;
+            width: 100%;
+            height: 220px;
+            border: 1px solid #dce3ec;
+            border-radius: 7px;
+            background: #fff;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            color: #45536a;
+            font-size: 0.67em;
+        }
+
+        .chart-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-swatch {
+            display: inline-block;
+            width: 16px;
+            height: 3px;
+            border-radius: 2px;
+            background: #174f85;
+        }
+
+        .legend-swatch.observed {
+            height: 9px;
+            border-radius: 2px 2px 0 0;
+            background: rgba(225, 142, 43, 0.64);
+            border: 1px solid rgba(190, 105, 18, 0.7);
+        }
+
+        .graph-caption {
+            margin: 7px 2px 1px;
+            color: #59677d;
+            font-size: 0.67em;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 1200px) {
+            .control-panel { width: 280px; }
+            .info-panel { width: 320px; }
+        }
+
+        @media (max-width: 900px) {
+            .control-panel { width: 250px; }
+            .info-panel {
+                display: flex;
+                width: 300px;
+            }
+            .intensity-graph { display: block; }
+            .intensity-graph canvas { height: 190px; }
+        }
+
+        @media (max-width: 700px) {
+            .header {
+                padding: 10px 14px;
+            }
+
+            .header h1 {
+                max-width: 65vw;
+                font-size: 0.92em;
+                letter-spacing: 1px;
+            }
+
+            .header .subtitle { display: none; }
+
+            .control-panel {
+                top: auto;
+                right: 10px;
+                bottom: 10px;
+                left: 10px;
+                width: auto;
+                height: 41vh;
+                max-height: 390px;
+                border-radius: 15px;
+            }
+
+            .info-panel {
+                top: 62px;
+                right: 10px;
+                bottom: auto;
+                left: 10px;
+                width: auto;
+                height: 34vh;
+                max-height: 300px;
+                border-radius: 15px;
+            }
+
+            .control-panel.collapsed {
+                bottom: 10px;
+                width: auto;
+            }
+
+            .info-panel.collapsed {
+                top: 62px;
+                width: auto;
+            }
+
+            .intensity-graph canvas { height: 140px; }
+            .panel-heading { margin-bottom: 6px; }
+            .bottom-bar { display: none; }
+        }
+
     </style>
 </head>
 <body>
@@ -557,6 +908,14 @@
 
     <!-- Control Panel -->
     <div class="control-panel" id="controlPanel">
+        <div class="panel-heading">
+            <div class="panel-heading-copy">
+                <span class="panel-eyebrow">Set up the apparatus</span>
+                <h2><span class="icon">⚙</span>Experiment options</h2>
+            </div>
+            <button class="panel-collapse" type="button" aria-controls="controlPanelContent" aria-expanded="true" aria-label="Minimize experiment options" title="Minimize experiment options">−</button>
+        </div>
+        <div class="panel-content" id="controlPanelContent">
         <!-- Particle Type -->
         <div class="section">
             <div class="section-title"><span class="icon">⚛</span> Particle Type</div>
@@ -575,7 +934,7 @@
             <div class="section-title"><span class="icon">🌊</span> Wave Properties</div>
             <div class="slider-group">
                 <div class="slider-label">
-                    <span class="name">Wavelength</span>
+                    <span class="name" id="wavelengthLabel">Wavelength</span>
                     <span class="value" id="wavelengthVal">550 nm</span>
                 </div>
                 <input type="range" id="wavelength" min="380" max="780" value="550" step="1">
@@ -599,6 +958,7 @@
         <!-- Slit Configuration -->
         <div class="section">
             <div class="section-title"><span class="icon">🔲</span> Slit Configuration</div>
+            <p class="slit-hint">Slit width stays smaller than the center-to-center separation for a valid aperture.</p>
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Slit Width</span>
@@ -616,7 +976,7 @@
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Screen Distance</span>
-                    <span class="value" id="screenDistVal">1.0 m</span>
+                    <span class="value" id="screenDistVal">1.00 m</span>
                 </div>
                 <input type="range" id="screenDistance" min="20" max="100" value="60">
             </div>
@@ -661,46 +1021,67 @@
             <button class="action-btn" id="pauseBtn">⏸ Pause</button>
             <button class="action-btn danger" id="clearBtn">✕ Clear Screen</button>
         </div>
+        </div>
     </div>
 
-    <!-- Info Panel -->
+    <!-- Experiment data and textbook-style intensity graph -->
     <div class="info-panel" id="infoPanel">
-        <div class="section-title"><span class="icon">📊</span> Experiment Data</div>
-        <div class="stat-row">
-            <span class="stat-name">Particles Fired</span>
-            <span class="stat-val" id="statFired">0</span>
+        <div class="panel-heading">
+            <div class="panel-heading-copy">
+                <span class="panel-eyebrow">Live results</span>
+                <h2><span class="icon">📊</span>Experiment data</h2>
+            </div>
+            <button class="panel-collapse" type="button" aria-controls="experimentDataContent" aria-expanded="true" aria-label="Minimize experiment data" title="Minimize experiment data">−</button>
         </div>
-        <div class="stat-row">
-            <span class="stat-name">Screen Hits</span>
-            <span class="stat-val" id="statHits">0</span>
-        </div>
-        <div class="stat-row">
-            <span class="stat-name">Fringe Spacing</span>
-            <span class="stat-val" id="statFringe">-</span>
-        </div>
-        <div class="stat-row">
-            <span class="stat-name">de Broglie λ</span>
-            <span class="stat-val" id="statDeBroglie">550 nm</span>
-        </div>
-        <div class="stat-row">
-            <span class="stat-name">Pattern</span>
-            <span class="stat-val" id="statPattern">Interference</span>
-        </div>
+        <div class="panel-content" id="experimentDataContent">
+            <div class="stat-row">
+                <span class="stat-name">Particles fired</span>
+                <span class="stat-val" id="statFired">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Screen hits</span>
+                <span class="stat-val" id="statHits">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name" id="statFringeLabel">Fringe spacing, Δy</span>
+                <span class="stat-val" id="statFringe">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name" id="statWavelengthLabel">Wavelength, λ</span>
+                <span class="stat-val" id="statDeBroglie">550 nm</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Pattern</span>
+                <span class="stat-val" id="statPattern">Two-slit</span>
+            </div>
 
-        <div class="physics-desc" id="physicsDesc">
-            <span class="highlight">Photons</span> exhibit wave-particle duality. 
-            Each photon passes through <span class="highlight">both slits simultaneously</span> 
-            as a probability wave, creating an interference pattern on the screen.
-        </div>
+            <div class="physics-desc" id="physicsDesc">
+                <span class="highlight">Photons</span> arrive one at a time. Without which-path information, the probability amplitudes from both slits interfere; many individual hits build the bright and dark fringes.
+            </div>
 
-        <div class="equation-box" id="equationBox">
-            Δy = λL / d
-        </div>
-    </div>
+            <div class="teaching-note">
+                <span aria-hidden="true">💡</span>
+                <span><strong>Bright</strong> bands are constructive interference; <strong>dark</strong> bands are destructive interference.</span>
+            </div>
 
-    <!-- Intensity Graph -->
-    <div class="intensity-graph" id="intensityGraph">
-        <canvas id="graphCanvas"></canvas>
+            <div class="equation-box" id="equationBox">
+                <span class="equation-main" id="equationMain">Δy = λL / d</span>
+                <span class="equation-note" id="equationNote">Approximate spacing between bright fringes for small angles.</span>
+            </div>
+
+            <div class="intensity-graph" id="intensityGraph">
+                <div class="graph-heading">
+                    <span>Screen intensity profile</span>
+                    <span class="graph-tag">Relative I</span>
+                </div>
+                <canvas id="graphCanvas" role="img" aria-label="Graph of relative intensity against position on the screen. Bright fringes are maxima and dark fringes are minima."></canvas>
+                <div class="chart-legend" aria-label="Graph legend">
+                    <span><i class="legend-swatch"></i>Ideal theory</span>
+                    <span><i class="legend-swatch observed"></i>Observed hits</span>
+                </div>
+                <p class="graph-caption">Blue: ideal Fraunhofer model. Bars: measured hits. 3D wavefront rings are enlarged schematically.</p>
+            </div>
+        </div>
     </div>
 
     <!-- Bottom View Controls -->
@@ -728,14 +1109,15 @@
         let frameCount = 0;
         let lastFpsTime = performance.now();
         let fps = 60;
+        let emissionAccumulator = 0;
 
         // Camera
         let camera = {
             x: 0, y: 80, z: -200,
-            rotX: -0.35, rotY: 0.0, rotZ: 0,
+            rotX: -0.35, rotY: -0.4, rotZ: 0,
             fov: 600,
             targetRotX: -0.35,
-            targetRotY: 0.0,
+            targetRotY: -0.4,
             targetY: 80,
             targetZ: -200
         };
@@ -772,21 +1154,31 @@
         let maxScreenHits = 15000;
         let wavePhase = 0;
 
-        // Intensities for graph
+        // Measurement bins and the screen's display scale. Physical positions are
+        // converted to scene units only for drawing; the wave calculation stays in mm.
         let intensityBins = new Float32Array(200);
+        const SCENE_UNITS_PER_MM = 6;
+        const SCREEN_HALF_HEIGHT = 120;
+        const SCREEN_HALF_RANGE_MM = SCREEN_HALF_HEIGHT / SCENE_UNITS_PER_MM;
 
         // Colors for particle types
         const particleColors = {
-            photon: { r: 0, g: 212, b: 255, name: 'Photon', mass: 0, desc: '<span class="highlight">Photons</span> exhibit wave-particle duality. Each photon passes through <span class="highlight">both slits simultaneously</span> as a probability wave, creating an interference pattern on the screen.' },
-            electron: { r: 123, g: 47, b: 252, name: 'Electron', mass: 9.109e-31, desc: '<span class="highlight">Electrons</span>, despite being matter particles, show <span class="highlight">wave-like interference</span>. Their de Broglie wavelength determines the fringe spacing. Observation collapses the wave function.' }
+            photon: { r: 0, g: 212, b: 255, name: 'Photon', mass: 0, desc: '<span class="highlight">Photons</span> arrive as localized detections. Without which-path information, probability amplitudes from the two slits interfere; many hits build the bright and dark fringe pattern.' },
+            electron: { r: 123, g: 47, b: 252, name: 'Electron', mass: 9.109e-31, desc: '<span class="highlight">Electrons</span> also form an interference pattern through their matter-wave probability. The wavelength control sets the de Broglie wavelength in this model; the purple color is only a visual aid.' }
         };
 
         // Resize
         function resize() {
             W = canvas.width = window.innerWidth;
             H = canvas.height = window.innerHeight;
-            graphCanvas.width = graphCanvas.parentElement.clientWidth - 30;
-            graphCanvas.height = graphCanvas.parentElement.clientHeight - 30;
+
+            const rect = graphCanvas.getBoundingClientRect();
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            if (rect.width > 0 && rect.height > 0) {
+                graphCanvas.width = Math.round(rect.width * pixelRatio);
+                graphCanvas.height = Math.round(rect.height * pixelRatio);
+                graphCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            }
         }
         window.addEventListener('resize', resize);
         resize();
@@ -869,61 +1261,84 @@
         }
 
         // ==========================================
-        // PHYSICS: INTERFERENCE PATTERN
+        // PHYSICS: FRAUNHOFER INTERFERENCE PATTERN
         // ==========================================
-        
-        function calculateIntensity(y, wavelength, slitSep, slitWidth, screenDist, numSlits, hasDetector) {
-            if (hasDetector) {
-                // No interference - just diffraction from single slits
-                const beta = Math.PI * slitWidth * y / (wavelength * screenDist);
-                const sinc = beta === 0 ? 1 : Math.sin(beta) / beta;
-                return sinc * sinc * numSlits;
+
+        // The sliders are shown in nm, mm and m. Keep the calculation in mm so
+        // Δy = λL/d and the single-slit envelope use consistent physical units.
+        function getWavelengthMm() {
+            return params.wavelength * 1e-6;
+        }
+
+        function getSlitSeparationMm() {
+            return params.slitSeparation * 0.01;
+        }
+
+        function getSlitWidthMm() {
+            return params.slitWidth * 0.01;
+        }
+
+        function getScreenDistanceMm() {
+            return (params.screenDistance / 60) * 1000;
+        }
+
+        function getScreenX() {
+            return params.screenDistance * 3 + 50;
+        }
+
+        function getSlitPositionsScene() {
+            const spacing = getSlitSeparationMm() * SCENE_UNITS_PER_MM;
+            return Array.from({ length: params.numSlits }, (_, i) =>
+                (i - (params.numSlits - 1) / 2) * spacing
+            );
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function calculateIntensity(positionMm, wavelengthMm, slitSepMm, slitWidthMm, screenDistMm, numSlits, hasDetector, coherence = 1) {
+            const safeSlitCount = Math.max(1, numSlits);
+            const beta = Math.PI * slitWidthMm * positionMm / (wavelengthMm * screenDistMm);
+            const envelopeAmplitude = Math.abs(beta) < 1e-10 ? 1 : Math.sin(beta) / beta;
+            const delta = Math.PI * slitSepMm * positionMm / (wavelengthMm * screenDistMm);
+
+            // With which-path information, or zero coherence, independent slits
+            // add intensities. Otherwise pairwise amplitudes produce the fringes.
+            const mutualCoherence = hasDetector ? 0 : clamp(coherence, 0, 1);
+            let arrayIntensity = safeSlitCount;
+            for (let order = 1; order < safeSlitCount; order++) {
+                arrayIntensity += 2 * mutualCoherence * (safeSlitCount - order) * Math.cos(2 * order * delta);
             }
-            
-            // Multi-slit interference
-            const delta = Math.PI * slitSep * y / (wavelength * screenDist);
-            const beta = Math.PI * slitWidth * y / (wavelength * screenDist);
-            
-            // Single slit diffraction envelope
-            const sinc = beta === 0 ? 1 : Math.sin(beta) / beta;
-            
-            // Multi-slit interference
-            let interference;
-            if (numSlits === 1) {
-                interference = 1;
-            } else {
-                const nDelta = numSlits * delta;
-                interference = delta === 0 ? numSlits : Math.sin(nDelta) / (numSlits * Math.sin(delta));
-            }
-            
-            return sinc * sinc * interference * interference * numSlits * numSlits;
+
+            return envelopeAmplitude * envelopeAmplitude * Math.max(0, arrayIntensity);
+        }
+
+        function intensityAtSceneY(yScene) {
+            return calculateIntensity(
+                yScene / SCENE_UNITS_PER_MM,
+                getWavelengthMm(),
+                getSlitSeparationMm(),
+                getSlitWidthMm(),
+                getScreenDistanceMm(),
+                params.numSlits,
+                params.detector,
+                params.coherence / 100
+            );
         }
 
         function sampleInterferencePattern() {
-            const wl = params.wavelength * 0.001; // scale
-            const sep = params.slitSeparation * 0.1;
-            const sw = params.slitWidth * 0.1;
-            const sd = params.screenDistance;
-            const useDetector = params.detector;
-            const ns = params.numSlits;
-            const coherence = params.coherence / 100;
-            
-            // Use rejection sampling
-            const maxY = 120;
-            const maxI = calculateIntensity(0, wl, sep, sw, sd, ns, useDetector);
-            
-            for (let attempts = 0; attempts < 1000; attempts++) {
-                const y = (Math.random() - 0.5) * 2 * maxY;
-                
-                // Mix between interference and uniform based on coherence
-                let intensity = calculateIntensity(y, wl, sep, sw, sd, ns, useDetector);
-                intensity = coherence * intensity + (1 - coherence) * maxI * 0.3;
-                
-                if (Math.random() * maxI < intensity) {
-                    return y;
-                }
+            const maxY = SCREEN_HALF_HEIGHT;
+            const maxIntensity = intensityAtSceneY(0);
+            if (!(maxIntensity > 0)) return (Math.random() - 0.5) * 2 * maxY;
+
+            // Rejection sampling makes individual hits follow the calculated
+            // probability distribution instead of drawing a pre-made band.
+            for (let attempts = 0; attempts < 1200; attempts++) {
+                const yScene = (Math.random() - 0.5) * 2 * maxY;
+                if (Math.random() * maxIntensity <= intensityAtSceneY(yScene)) return yScene;
             }
-            return (Math.random() - 0.5) * 100;
+            return (Math.random() - 0.5) * 2 * maxY;
         }
 
         // ==========================================
@@ -952,14 +1367,10 @@
             
             // Barrier position
             const barrierX = -50;
-            const screenX = params.screenDistance * 3 + 50;
+            const screenX = getScreenX();
             
             // Calculate which slit to go through visually
-            const slitPositions = [];
-            for (let i = 0; i < params.numSlits; i++) {
-                const offset = (i - (params.numSlits - 1) / 2) * params.slitSeparation * 0.3;
-                slitPositions.push(offset);
-            }
+            const slitPositions = getSlitPositionsScene();
             
             // Choose closest slit for trajectory if detector is on
             let slitY;
@@ -1025,7 +1436,7 @@
             } else if (!p.passedBarrier) {
                 p.passedBarrier = true;
                 // Snap near slit
-                p.y = p.slitY + (Math.random() - 0.5) * params.slitWidth * 0.15;
+                p.y = p.slitY + (Math.random() - 0.5) * getSlitWidthMm() * SCENE_UNITS_PER_MM;
             } else {
                 // After barrier - fan out toward target
                 const t = (p.x - p.barrierX) / (p.screenX - p.barrierX);
@@ -1064,7 +1475,7 @@
                 }
                 
                 // Update intensity bins
-                const binIndex = Math.floor((hitY + 120) / 240 * intensityBins.length);
+                const binIndex = Math.floor((hitY + SCREEN_HALF_HEIGHT) / (2 * SCREEN_HALF_HEIGHT) * intensityBins.length);
                 if (binIndex >= 0 && binIndex < intensityBins.length) {
                     intensityBins[binIndex] += 1;
                 }
@@ -1092,8 +1503,9 @@
             // Draw barrier with slits
             drawBarrier();
             
-            // Draw screen
+            // Draw screen and its predicted bright/dark fringe pattern
             drawScreen();
+            drawScreenPattern();
             
             // Draw wave fronts
             if (params.showWave && !params.detector) {
@@ -1191,12 +1603,8 @@
             const thickness = 4;
             
             // Calculate slit positions
-            const slitPositions = [];
-            for (let i = 0; i < params.numSlits; i++) {
-                const offset = (i - (params.numSlits - 1) / 2) * params.slitSeparation * 0.3;
-                slitPositions.push(offset);
-            }
-            const halfSlitW = params.slitWidth * 0.15;
+            const slitPositions = getSlitPositionsScene();
+            const halfSlitW = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
             
             // Draw barrier segments (between and outside slits)
             ctx.fillStyle = 'rgba(80, 80, 120, 0.6)';
@@ -1286,7 +1694,7 @@
         }
 
         function drawScreen() {
-            const screenX = params.screenDistance * 3 + 50;
+            const screenX = getScreenX();
             const screenH = 140;
             const screenD = 30;
             
@@ -1317,6 +1725,43 @@
                 ctx.font = '11px system-ui';
                 ctx.textAlign = 'center';
                 ctx.fillText('DETECTION SCREEN', lp.x, lp.y);
+            }
+        }
+
+        function drawScreenPattern() {
+            const screenX = getScreenX();
+            const screenDepth = 28;
+            const color = params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+            const centralIntensity = intensityAtSceneY(0);
+            if (!(centralIntensity > 0)) return;
+
+            // Each strip is shaded from the same Fraunhofer intensity used by
+            // the particle sampler and graph. Dark minima reveal the black screen.
+            const stripHeight = 0.75;
+            for (let y = -SCREEN_HALF_HEIGHT; y < SCREEN_HALF_HEIGHT; y += stripHeight) {
+                const y1 = y;
+                const y2 = Math.min(y + stripHeight, SCREEN_HALF_HEIGHT);
+                const midpoint = (y1 + y2) / 2;
+                const relativeIntensity = clamp(intensityAtSceneY(midpoint) / centralIntensity, 0, 1);
+                if (relativeIntensity < 0.012) continue;
+
+                const brightness = Math.pow(relativeIntensity, 0.62);
+                const corners = [
+                    project(screenX + 0.35, y1, -screenDepth),
+                    project(screenX + 0.35, y2, -screenDepth),
+                    project(screenX + 0.35, y2, screenDepth),
+                    project(screenX + 0.35, y1, screenDepth)
+                ];
+                if (!corners.every(Boolean)) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.08 + brightness * 0.88})`;
+                ctx.fill();
             }
         }
 
@@ -1353,11 +1798,7 @@
             
             // Wave fronts after barrier (from each slit)
             if (params.numSlits >= 1) {
-                const slitPositions = [];
-                for (let i = 0; i < params.numSlits; i++) {
-                    const offset = (i - (params.numSlits - 1) / 2) * params.slitSeparation * 0.3;
-                    slitPositions.push(offset);
-                }
+                const slitPositions = getSlitPositionsScene();
                 
                 for (const slitY of slitPositions) {
                     for (let i = 0; i < 10; i++) {
@@ -1374,7 +1815,7 @@
                             const wx = barrierX + radius * Math.cos(a);
                             const wy = slitY + radius * Math.sin(a);
                             if (wx < barrierX + 2) continue;
-                            const screenX = params.screenDistance * 3 + 50;
+                            const screenX = getScreenX();
                             if (wx > screenX) continue;
                             
                             const p = project(wx, wy, 0);
@@ -1390,16 +1831,16 @@
         }
 
         function drawProbabilityCloud() {
-            const screenX = params.screenDistance * 3 + 50;
-            const color = particleColors[params.particleType];
-            const wl = params.wavelength * 0.001;
-            const sep = params.slitSeparation * 0.1;
-            const sw = params.slitWidth * 0.1;
-            const sd = params.screenDistance;
-            
-            for (let y = -120; y <= 120; y += 3) {
-                const intensity = calculateIntensity(y, wl, sep, sw, sd, params.numSlits, params.detector);
-                const alpha = Math.min(0.4, intensity * 0.15);
+            const screenX = getScreenX();
+            const color = params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+            const centralIntensity = intensityAtSceneY(0);
+            if (!(centralIntensity > 0)) return;
+
+            for (let y = -SCREEN_HALF_HEIGHT; y <= SCREEN_HALF_HEIGHT; y += 3) {
+                const intensity = clamp(intensityAtSceneY(y) / centralIntensity, 0, 1);
+                const alpha = Math.min(0.4, intensity * 0.4);
                 
                 if (alpha < 0.01) continue;
                 
@@ -1480,7 +1921,7 @@
         }
 
         function drawScreenHits() {
-            const screenX = params.screenDistance * 3 + 50;
+            const screenX = getScreenX();
             
             for (const hit of screenHits) {
                 hit.age += 0.016;
@@ -1511,11 +1952,7 @@
 
         function drawDetector() {
             const barrierX = -50;
-            const slitPositions = [];
-            for (let i = 0; i < params.numSlits; i++) {
-                const offset = (i - (params.numSlits - 1) / 2) * params.slitSeparation * 0.3;
-                slitPositions.push(offset);
-            }
+            const slitPositions = getSlitPositionsScene();
             
             for (const slitY of slitPositions) {
                 const dp = project(barrierX + 15, slitY, 0);
@@ -1571,73 +2008,130 @@
         // ==========================================
         
         function drawIntensityGraph() {
-            const gw = graphCanvas.width;
-            const gh = graphCanvas.height;
-            
-            graphCtx.fillStyle = 'rgba(8, 8, 18, 0.95)';
+            const gw = graphCanvas.clientWidth;
+            const gh = graphCanvas.clientHeight;
+            if (gw < 40 || gh < 60) return;
+
+            graphCtx.clearRect(0, 0, gw, gh);
+            graphCtx.fillStyle = '#ffffff';
             graphCtx.fillRect(0, 0, gw, gh);
-            
-            // Title
-            graphCtx.fillStyle = 'rgba(0, 212, 255, 0.5)';
-            graphCtx.font = '10px system-ui';
-            graphCtx.fillText('Intensity Distribution', 5, 12);
-            
-            // Find max
-            let maxVal = 1;
-            for (let i = 0; i < intensityBins.length; i++) {
-                if (intensityBins[i] > maxVal) maxVal = intensityBins[i];
+
+            const margin = { left: 48, right: 10, top: 10, bottom: 39 };
+            const plotLeft = margin.left;
+            const plotRight = gw - margin.right;
+            const plotTop = margin.top;
+            const plotBottom = gh - margin.bottom;
+            const plotWidth = plotRight - plotLeft;
+            const plotHeight = plotBottom - plotTop;
+            if (plotWidth <= 0 || plotHeight <= 0) return;
+
+            const xForPosition = positionMm =>
+                plotLeft + ((positionMm + SCREEN_HALF_RANGE_MM) / (2 * SCREEN_HALF_RANGE_MM)) * plotWidth;
+            const yForIntensity = relativeIntensity =>
+                plotBottom - clamp(relativeIntensity, 0, 1) * plotHeight;
+
+            // Light graph-paper grid and explicit textbook axes.
+            graphCtx.font = '9px system-ui, sans-serif';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.textAlign = 'right';
+            for (const value of [0, 0.25, 0.5, 0.75, 1]) {
+                const y = yForIntensity(value);
+                graphCtx.strokeStyle = value === 0 ? '#56647a' : '#e4e9f0';
+                graphCtx.lineWidth = value === 0 ? 1.1 : 0.8;
+                graphCtx.beginPath();
+                graphCtx.moveTo(plotLeft, y);
+                graphCtx.lineTo(plotRight, y);
+                graphCtx.stroke();
+                graphCtx.fillStyle = '#526078';
+                graphCtx.fillText(value.toFixed(value === 0 || value === 1 ? 0 : 2).replace(/0+$/, '').replace(/\.$/, ''), plotLeft - 6, y);
             }
-            
-            const color = particleColors[params.particleType];
-            
-            // Draw theoretical curve
-            const wl = params.wavelength * 0.001;
-            const sep = params.slitSeparation * 0.1;
-            const sw = params.slitWidth * 0.1;
-            const sd = params.screenDistance;
-            
-            graphCtx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.2)`;
-            graphCtx.lineWidth = 1;
-            graphCtx.beginPath();
-            
-            let maxTheory = 0;
-            for (let i = 0; i < gw; i++) {
-                const y = (i / gw - 0.5) * 240;
-                const intensity = calculateIntensity(y, wl, sep, sw, sd, params.numSlits, params.detector);
-                if (intensity > maxTheory) maxTheory = intensity;
-            }
-            
-            for (let i = 0; i < gw; i++) {
-                const y = (i / gw - 0.5) * 240;
-                let intensity = calculateIntensity(y, wl, sep, sw, sd, params.numSlits, params.detector);
-                intensity = intensity / maxTheory;
-                const gy = gh - 20 - intensity * (gh - 30);
-                if (i === 0) graphCtx.moveTo(i, gy);
-                else graphCtx.lineTo(i, gy);
-            }
-            graphCtx.stroke();
-            
-            // Draw measured histogram
-            graphCtx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.4)`;
-            const binWidth = gw / intensityBins.length;
-            
-            for (let i = 0; i < intensityBins.length; i++) {
-                const h = (intensityBins[i] / maxVal) * (gh - 30);
-                graphCtx.fillRect(i * binWidth, gh - 20 - h, binWidth - 0.5, h);
-            }
-            
-            // Axis
-            graphCtx.strokeStyle = 'rgba(255,255,255,0.1)';
-            graphCtx.lineWidth = 0.5;
-            graphCtx.beginPath();
-            graphCtx.moveTo(0, gh - 20);
-            graphCtx.lineTo(gw, gh - 20);
-            graphCtx.stroke();
-            
-            graphCtx.fillStyle = 'rgba(255,255,255,0.3)';
-            graphCtx.font = '8px system-ui';
+
+            const xTicks = [-SCREEN_HALF_RANGE_MM, -SCREEN_HALF_RANGE_MM / 2, 0, SCREEN_HALF_RANGE_MM / 2, SCREEN_HALF_RANGE_MM];
+            graphCtx.textBaseline = 'top';
             graphCtx.textAlign = 'center';
-            graphCtx.fillText('Position', gw / 2, gh - 5);
+            for (const position of xTicks) {
+                const x = xForPosition(position);
+                graphCtx.strokeStyle = position === 0 ? '#c6cfdb' : '#e8edf3';
+                graphCtx.lineWidth = position === 0 ? 1 : 0.75;
+                graphCtx.beginPath();
+                graphCtx.moveTo(x, plotTop);
+                graphCtx.lineTo(x, plotBottom);
+                graphCtx.stroke();
+                graphCtx.fillStyle = '#526078';
+                graphCtx.fillText(position.toFixed(position % 1 === 0 ? 0 : 1), x, plotBottom + 4);
+            }
+
+            // Observed particle hits: a normalized histogram on the same I/I₀ scale.
+            let maxBin = 0;
+            for (const count of intensityBins) maxBin = Math.max(maxBin, count);
+            if (maxBin > 0) {
+                const binWidth = plotWidth / intensityBins.length;
+                graphCtx.fillStyle = 'rgba(225, 142, 43, 0.46)';
+                graphCtx.strokeStyle = 'rgba(181, 101, 22, 0.36)';
+                graphCtx.lineWidth = 0.55;
+                for (let i = 0; i < intensityBins.length; i++) {
+                    if (intensityBins[i] === 0) continue;
+                    const height = (intensityBins[i] / maxBin) * plotHeight;
+                    const x = plotLeft + i * binWidth;
+                    graphCtx.fillRect(x + 0.2, plotBottom - height, Math.max(0.7, binWidth - 0.45), height);
+                    graphCtx.strokeRect(x + 0.2, plotBottom - height, Math.max(0.7, binWidth - 0.45), height);
+                }
+            }
+
+            // Ideal Fraunhofer intensity, normalized to the central maximum I₀.
+            const centralIntensity = intensityAtSceneY(0);
+            if (centralIntensity > 0) {
+                graphCtx.beginPath();
+                for (let pixel = 0; pixel <= plotWidth; pixel += 0.5) {
+                    const positionMm = ((pixel / plotWidth) - 0.5) * 2 * SCREEN_HALF_RANGE_MM;
+                    const relativeIntensity = clamp(
+                        calculateIntensity(
+                            positionMm,
+                            getWavelengthMm(),
+                            getSlitSeparationMm(),
+                            getSlitWidthMm(),
+                            getScreenDistanceMm(),
+                            params.numSlits,
+                            params.detector,
+                            params.coherence / 100
+                        ) / centralIntensity,
+                        0,
+                        1
+                    );
+                    const x = plotLeft + pixel;
+                    const y = yForIntensity(relativeIntensity);
+                    if (pixel === 0) graphCtx.moveTo(x, y);
+                    else graphCtx.lineTo(x, y);
+                }
+                graphCtx.strokeStyle = '#174f85';
+                graphCtx.lineWidth = 2.25;
+                graphCtx.lineJoin = 'round';
+                graphCtx.lineCap = 'round';
+                graphCtx.stroke();
+            }
+
+            // Strong, clearly visible axes and textbook labels.
+            graphCtx.strokeStyle = '#526078';
+            graphCtx.lineWidth = 1.1;
+            graphCtx.beginPath();
+            graphCtx.moveTo(plotLeft, plotTop);
+            graphCtx.lineTo(plotLeft, plotBottom);
+            graphCtx.lineTo(plotRight, plotBottom);
+            graphCtx.stroke();
+
+            graphCtx.fillStyle = '#334155';
+            graphCtx.font = '9px system-ui, sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'bottom';
+            graphCtx.fillText('Position on screen, y (mm)', (plotLeft + plotRight) / 2, gh - 1);
+
+            graphCtx.save();
+            graphCtx.translate(10, (plotTop + plotBottom) / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.fillText('Relative intensity, I / I₀', 0, 0);
+            graphCtx.restore();
         }
 
         // ==========================================
@@ -1662,13 +2156,12 @@
                 }
             } else {
                 // Fractional emission with accumulator
-                if (!this._emitAccum) this._emitAccum = 0;
-                this._emitAccum += particlesToEmit;
-                while (this._emitAccum >= 1) {
+                emissionAccumulator += particlesToEmit;
+                while (emissionAccumulator >= 1) {
                     if (particles.length < maxParticles) {
                         particles.push(createParticle());
                     }
-                    this._emitAccum -= 1;
+                    emissionAccumulator -= 1;
                 }
             }
             
@@ -1685,34 +2178,49 @@
             document.getElementById('particleCount').textContent = `${particles.length} active`;
             document.getElementById('statFired').textContent = totalFired.toLocaleString();
             document.getElementById('statHits').textContent = totalHits.toLocaleString();
-            
-            // Calculate fringe spacing
-            const wl = params.wavelength;
-            const sep = params.slitSeparation;
-            const sd = params.screenDistance;
-            const fringeSpacing = (wl * sd * 3) / (sep * 0.3);
-            document.getElementById('statFringe').textContent = (fringeSpacing * 0.01).toFixed(2) + ' mm';
-            
-            // De Broglie wavelength
-            if (params.particleType === 'photon') {
-                document.getElementById('statDeBroglie').textContent = params.wavelength + ' nm';
-            } else {
-                const mass = particleColors[params.particleType].mass;
-                // Approximate based on typical velocity
-                const h = 6.626e-34;
-                const v = params.particleType === 'electron' ? 1e6 : 1e3;
-                const deBroglie = h / (mass * v);
-                document.getElementById('statDeBroglie').textContent = (deBroglie * 1e12).toFixed(2) + ' pm';
-            }
-            
-            // Pattern type
-            if (params.numSlits === 1) {
-                document.getElementById('statPattern').textContent = 'Diffraction';
-            } else if (params.detector) {
-                document.getElementById('statPattern').textContent = 'No Interference';
-            } else {
-                document.getElementById('statPattern').textContent = 'Interference';
-            }
+
+            const fringeSpacingMm = getWavelengthMm() * getScreenDistanceMm() / getSlitSeparationMm();
+            const singleSlitWidthMm = 2 * getWavelengthMm() * getScreenDistanceMm() / getSlitWidthMm();
+            const isSingleSlit = params.numSlits === 1;
+            document.getElementById('statFringeLabel').textContent = isSingleSlit
+                ? 'Central maximum width'
+                : 'Fringe spacing, Δy';
+            document.getElementById('statFringe').textContent = `${(isSingleSlit ? singleSlitWidthMm : fringeSpacingMm).toFixed(2)} mm`;
+            document.getElementById('equationMain').textContent = isSingleSlit
+                ? 'Central width ≈ 2λL / a'
+                : 'Δy ≈ λL / d';
+            document.getElementById('equationNote').textContent = isSingleSlit
+                ? 'Width between the first dark minima of the single-slit envelope.'
+                : 'Spacing between adjacent bright fringes for small angles.';
+            document.getElementById('statDeBroglie').textContent = `${params.wavelength} nm`;
+            document.getElementById('statWavelengthLabel').textContent = params.particleType === 'electron'
+                ? 'de Broglie λ'
+                : 'Wavelength, λ';
+            document.getElementById('wavelengthLabel').textContent = params.particleType === 'electron'
+                ? 'Matter-wave wavelength'
+                : 'Wavelength';
+
+            const patternLabel = params.numSlits === 1
+                ? 'Single-slit diffraction'
+                : (params.detector || params.coherence === 0)
+                    ? 'Incoherent slits'
+                    : params.coherence < 100
+                        ? 'Partial interference'
+                        : 'Interference';
+            document.getElementById('statPattern').textContent = patternLabel;
+        }
+
+        // Clear hits whenever the physical setup changes so the graph never mixes
+        // data collected under different wavelengths or slit geometries.
+        function resetExperiment() {
+            particles = [];
+            screenHits = [];
+            intensityBins = new Float32Array(200);
+            totalFired = 0;
+            totalHits = 0;
+            emissionAccumulator = 0;
+            updateUI();
+            drawIntensityGraph();
         }
 
         // ==========================================
@@ -1803,6 +2311,26 @@
             camera.targetZ = Math.max(-400, Math.min(-80, camera.targetZ));
         }, { passive: false });
 
+        // Expand/collapse either panel independently.
+        document.querySelectorAll('.panel-collapse').forEach(button => {
+            button.addEventListener('click', () => {
+                const panel = button.closest('.control-panel, .info-panel');
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                panel.classList.toggle('collapsed', expanded);
+                button.setAttribute('aria-expanded', String(!expanded));
+                const panelName = panel.id === 'controlPanel' ? 'experiment options' : 'experiment data';
+                button.setAttribute('aria-label', `${expanded ? 'Expand' : 'Minimize'} ${panelName}`);
+                button.title = `${expanded ? 'Expand' : 'Minimize'} ${panelName}`;
+                button.textContent = expanded ? '+' : '−';
+                if (!expanded && panel.id === 'infoPanel') {
+                    requestAnimationFrame(() => {
+                        resize();
+                        drawIntensityGraph();
+                    });
+                }
+            });
+        });
+
         // Particle type buttons
         document.querySelectorAll('.particle-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1810,34 +2338,47 @@
                 btn.classList.add('active');
                 params.particleType = btn.dataset.type;
                 document.getElementById('physicsDesc').innerHTML = particleColors[params.particleType].desc;
-                
-                // Update wavelength slider based on particle type
-                if (params.particleType !== 'photon') {
-                    // For matter particles, wavelength becomes less meaningful visually
-                    // but we keep it for the interference pattern
-                }
+                const rgb = wavelengthToRGB(params.wavelength);
+                document.getElementById('wavelength').style.accentColor = params.particleType === 'photon'
+                    ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`
+                    : '#7b2ffc';
+                resetExperiment();
             });
         });
 
+        function updateSlitWidthLimit() {
+            const widthSlider = document.getElementById('slitWidth');
+            const maxWidth = Math.max(Number(widthSlider.min), Math.floor(params.slitSeparation * 0.8));
+            widthSlider.max = String(maxWidth);
+            if (params.slitWidth > maxWidth) {
+                params.slitWidth = maxWidth;
+                widthSlider.value = String(maxWidth);
+                document.getElementById('slitWidthVal').textContent = (maxWidth * 0.01).toFixed(2) + ' mm';
+            }
+        }
+
         // Sliders
-        function setupSlider(id, param, format) {
+        function setupSlider(id, param, format, resetOnChange = false) {
             const slider = document.getElementById(id);
             const display = document.getElementById(id + 'Val');
             slider.addEventListener('input', () => {
                 const val = parseFloat(slider.value);
                 params[param] = param === 'speed' ? val / 10 : val;
                 display.textContent = format(val);
+                if (id === 'slitSeparation') updateSlitWidthLimit();
+                if (resetOnChange) resetExperiment();
             });
         }
 
-        setupSlider('wavelength', 'wavelength', v => v + ' nm');
+        setupSlider('wavelength', 'wavelength', v => v + ' nm', true);
         setupSlider('emissionRate', 'emissionRate', v => v + '/s');
-        setupSlider('coherence', 'coherence', v => v + '%');
-        setupSlider('slitWidth', 'slitWidth', v => (v * 0.01).toFixed(2) + ' mm');
-        setupSlider('slitSeparation', 'slitSeparation', v => (v * 0.01).toFixed(2) + ' mm');
-        setupSlider('screenDistance', 'screenDistance', v => (v / 60).toFixed(1) + ' m');
-        setupSlider('numSlits', 'numSlits', v => v);
+        setupSlider('coherence', 'coherence', v => v + '%', true);
+        setupSlider('slitWidth', 'slitWidth', v => (v * 0.01).toFixed(2) + ' mm', true);
+        setupSlider('slitSeparation', 'slitSeparation', v => (v * 0.01).toFixed(2) + ' mm', true);
+        setupSlider('screenDistance', 'screenDistance', v => (v / 60).toFixed(2) + ' m', true);
+        setupSlider('numSlits', 'numSlits', v => v, true);
         setupSlider('speed', 'speed', v => (v / 10).toFixed(1) + '×');
+        updateSlitWidthLimit();
 
         // Update wavelength slider color
         document.getElementById('wavelength').addEventListener('input', function() {
@@ -1858,18 +2399,14 @@
         setupToggle('trails', 'trails');
 
         // Action buttons
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            particles = [];
-            screenHits = [];
-            intensityBins = new Float32Array(200);
-            totalFired = 0;
-            totalHits = 0;
-        });
+        document.getElementById('resetBtn').addEventListener('click', resetExperiment);
 
         document.getElementById('clearBtn').addEventListener('click', () => {
             screenHits = [];
             intensityBins = new Float32Array(200);
             totalHits = 0;
+            drawIntensityGraph();
+            updateUI();
         });
 
         document.getElementById('pauseBtn').addEventListener('click', function() {
@@ -1886,7 +2423,7 @@
                 switch (btn.dataset.view) {
                     case 'perspective':
                         camera.targetRotX = -0.35;
-                        camera.targetRotY = 0;
+                        camera.targetRotY = -0.4;
                         camera.targetY = 80;
                         camera.targetZ = -200;
                         break;
