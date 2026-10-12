@@ -1006,6 +1006,14 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            <div class="toggle-row">
+                <span class="label">Predicted Pattern</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="predictedPattern">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="slit-hint">The screen stays dark until particles land. Fringes develop only from real impacts, over about 5 seconds. Switch this on to ghost the textbook prediction on top for comparison.</p>
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Animation Speed</span>
@@ -1041,6 +1049,10 @@
             <div class="stat-row">
                 <span class="stat-name">Screen hits</span>
                 <span class="stat-val" id="statHits">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Fringe build-up</span>
+                <span class="stat-val" id="statBuild">Awaiting impact</span>
             </div>
             <div class="stat-row">
                 <span class="stat-name" id="statFringeLabel">Fringe spacing, Δy</span>
@@ -1138,6 +1150,7 @@
             detector: false,
             showWave: true,
             showProbability: false,
+            predictedPattern: false,
             singleParticle: false,
             delayedChoice: false,
             glowEffects: true,
@@ -1160,6 +1173,20 @@
         const SCENE_UNITS_PER_MM = 6;
         const SCREEN_HALF_HEIGHT = 120;
         const SCREEN_HALF_RANGE_MM = SCREEN_HALF_HEIGHT / SCENE_UNITS_PER_MM;
+
+        // ---- Detection-screen exposure -------------------------------------
+        // The screen is NOT pre-painted with the answer. Every impact deposits a
+        // little exposure into the strip it actually landed on, and that
+        // accumulated density fades in over PATTERN_BUILD_SECONDS, so the fringes
+        // develop gradually out of the hits that landed in each area.
+        const PATTERN_BINS = 320;
+        const PATTERN_BUILD_SECONDS = 5;
+        const PATTERN_KERNEL = [0.1, 0.2, 0.4, 0.2, 0.1];
+        const IMPACT_RING_SECONDS = 0.55;
+        const IMPACT_GLOW_SECONDS = 1.4;
+        let patternExposure = new Float32Array(PATTERN_BINS);
+        let patternBuildStart = null;   // simulation time of the first detection
+        let patternBuildProgress = 0;   // 0..1, exposed for the UI read-out
 
         // Colors for particle types
         const particleColors = {
@@ -1466,13 +1493,17 @@
                     y: hitY,
                     z: hitZ,
                     color: p.color,
-                    age: 0,
+                    bornAt: time,
                     brightness: 1
                 });
                 
                 if (screenHits.length > maxScreenHits) {
                     screenHits.shift();
                 }
+                
+                // The impact exposes the screen exactly where it landed and starts
+                // (or continues) the 5-second development of the fringe pattern.
+                depositExposure(hitY, 1);
                 
                 // Update intensity bins
                 const binIndex = Math.floor((hitY + SCREEN_HALF_HEIGHT) / (2 * SCREEN_HALF_HEIGHT) * intensityBins.length);
@@ -1503,9 +1534,10 @@
             // Draw barrier with slits
             drawBarrier();
             
-            // Draw screen and its predicted bright/dark fringe pattern
+            // Draw the detection screen, then only what the impacts have built on it
             drawScreen();
-            drawScreenPattern();
+            drawDevelopedPattern();
+            if (params.predictedPattern) drawPredictedPattern();
             
             // Draw wave fronts
             if (params.showWave && !params.detector) {
@@ -1728,12 +1760,130 @@
             }
         }
 
-        function drawScreenPattern() {
-            const screenX = getScreenX();
-            const screenDepth = 28;
-            const color = params.particleType === 'photon'
+        // ---- Screen exposure: deposition, development and rendering --------
+
+        function depositExposure(yScene, weight) {
+            const span = 2 * SCREEN_HALF_HEIGHT;
+            const center = ((yScene + SCREEN_HALF_HEIGHT) / span) * PATTERN_BINS;
+            const base = Math.round(center);
+            const half = (PATTERN_KERNEL.length - 1) / 2;
+
+            // A detection is a finite spot, not an infinitely thin line, so the
+            // exposure is spread over a few neighbouring strips.
+            for (let k = 0; k < PATTERN_KERNEL.length; k++) {
+                const idx = base + k - half;
+                if (idx < 0 || idx >= PATTERN_BINS) continue;
+                patternExposure[idx] += weight * PATTERN_KERNEL[k];
+            }
+
+            // The first impact of a run starts the development clock.
+            if (patternBuildStart === null) patternBuildStart = time;
+        }
+
+        function clearPatternExposure() {
+            patternExposure = new Float32Array(PATTERN_BINS);
+            patternBuildStart = null;
+            patternBuildProgress = 0;
+        }
+
+        // Smoothstep ramp from the first impact: nothing at t = 0, fully developed
+        // after PATTERN_BUILD_SECONDS, so fringes fade into place instead of popping.
+        function patternReveal() {
+            if (patternBuildStart === null) return 0;
+            const u = clamp((time - patternBuildStart) / PATTERN_BUILD_SECONDS, 0, 1);
+            return u * u * (3 - 2 * u);
+        }
+
+        function screenPatternColor() {
+            return params.particleType === 'photon'
                 ? wavelengthToRGB(params.wavelength)
                 : particleColors[params.particleType];
+        }
+
+        function drawDevelopedPattern() {
+            const reveal = patternReveal();
+            patternBuildProgress = reveal;
+            if (reveal <= 0.002) {
+                drawAwaitingDetectionsHint();
+                return;
+            }
+
+            let maxExposure = 0;
+            for (let i = 0; i < PATTERN_BINS; i++) {
+                if (patternExposure[i] > maxExposure) maxExposure = patternExposure[i];
+            }
+            if (!(maxExposure > 0)) {
+                drawAwaitingDetectionsHint();
+                return;
+            }
+
+            const screenX = getScreenX();
+            const screenDepth = 28;
+            const color = screenPatternColor();
+            const binHeight = (2 * SCREEN_HALF_HEIGHT) / PATTERN_BINS;
+
+            // Additive blending makes overlapping exposures glow like a phosphor
+            // screen; untouched strips stay black, so dark fringes stay dark.
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+
+            let i = 0;
+            while (i < PATTERN_BINS) {
+                const density = patternExposure[i] / maxExposure;
+                if (density < 0.008) { i++; continue; }
+
+                // Merge neighbouring strips of almost equal density into one quad
+                // so a fully developed pattern costs a handful of fills.
+                let j = i + 1;
+                while (j < PATTERN_BINS &&
+                       Math.abs(patternExposure[j] / maxExposure - density) < 0.02) j++;
+
+                let sum = 0;
+                for (let k = i; k < j; k++) sum += patternExposure[k];
+                const average = (sum / (j - i)) / maxExposure;
+
+                const y1 = -SCREEN_HALF_HEIGHT + i * binHeight;
+                const y2 = -SCREEN_HALF_HEIGHT + j * binHeight;
+                const corners = [
+                    project(screenX + 0.35, y1, -screenDepth),
+                    project(screenX + 0.35, y2, -screenDepth),
+                    project(screenX + 0.35, y2, screenDepth),
+                    project(screenX + 0.35, y1, screenDepth)
+                ];
+                i = j;
+                if (!corners.every(Boolean)) continue;
+
+                const alpha = reveal * (0.05 + 0.9 * Math.pow(average, 0.85));
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for (let c = 1; c < corners.length; c++) ctx.lineTo(corners[c].x, corners[c].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha.toFixed(3)})`;
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawAwaitingDetectionsHint() {
+            if (totalHits > 0) return;
+            const p = project(getScreenX() + 0.4, 0, 0);
+            if (!p) return;
+            const pulse = 0.12 + Math.sin(time * 2) * 0.04;
+            ctx.save();
+            ctx.fillStyle = `rgba(150, 165, 210, ${Math.max(0.05, pulse).toFixed(3)})`;
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText('AWAITING DETECTIONS', p.x, p.y);
+            ctx.restore();
+        }
+
+        // Optional teaching aid: the ideal Fraunhofer fringes, ghosted on top of
+        // whatever the particles have actually built up. Off by default.
+        function drawPredictedPattern() {
+            const screenX = getScreenX();
+            const screenDepth = 28;
+            const color = screenPatternColor();
             const centralIntensity = intensityAtSceneY(0);
             if (!(centralIntensity > 0)) return;
 
@@ -1760,7 +1910,7 @@
                 ctx.moveTo(corners[0].x, corners[0].y);
                 for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
                 ctx.closePath();
-                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.08 + brightness * 0.88})`;
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(0.03 + brightness * 0.28).toFixed(3)})`;
                 ctx.fill();
             }
         }
@@ -1920,34 +2070,102 @@
             }
         }
 
+        // Radial glow sprites are cached per colour so a fresh impact can be lit
+        // with a single drawImage instead of building a gradient every frame.
+        const glowSpriteCache = new Map();
+
+        function glowSprite(r, g, b) {
+            const key = `${r},${g},${b}`;
+            let sprite = glowSpriteCache.get(key);
+            if (sprite) return sprite;
+
+            const size = 64;
+            sprite = document.createElement('canvas');
+            sprite.width = size;
+            sprite.height = size;
+            const sctx = sprite.getContext('2d');
+            const grd = sctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+            grd.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+            grd.addColorStop(0.22, `rgba(${r}, ${g}, ${b}, 0.5)`);
+            grd.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.12)`);
+            grd.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            sctx.fillStyle = grd;
+            sctx.fillRect(0, 0, size, size);
+            glowSpriteCache.set(key, sprite);
+            return sprite;
+        }
+
         function drawScreenHits() {
-            const screenX = getScreenX();
-            
-            for (const hit of screenHits) {
-                hit.age += 0.016;
+            if (screenHits.length === 0) return;
+
+            // Hits are pushed in arrival order, so the still-glowing ones are at
+            // the tail: split the array instead of testing every entry twice.
+            let freshStart = screenHits.length;
+            while (freshStart > 0 &&
+                   (time - screenHits[freshStart - 1].bornAt) < IMPACT_GLOW_SECONDS) {
+                freshStart--;
+            }
+
+            // Settled detections: tiny phosphor pixels, one cheap fill each. The
+            // colour is shared by the whole buffer because any change of particle
+            // type or wavelength resets the experiment.
+            const settledColor = screenHits[screenHits.length - 1].color;
+            ctx.save();
+            ctx.fillStyle = `rgba(${settledColor.r}, ${settledColor.g}, ${settledColor.b}, 0.5)`;
+            for (let i = 0; i < freshStart; i++) {
+                const hit = screenHits[i];
                 const p = project(hit.x, hit.y, hit.z);
                 if (!p) continue;
-                
-                const fadeIn = Math.min(1, hit.age * 5);
-                const { r, g, b } = hit.color;
-                const alpha = fadeIn * 0.7;
-                const size = Math.max(1, 1.5 * p.scale);
-                
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                ctx.fill();
-                
-                // Small glow for recent hits
-                if (hit.age < 0.5 && params.glowEffects) {
-                    const glowAlpha = (1 - hit.age * 2) * 0.3;
-                    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 5);
-                    grd.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${glowAlpha})`);
-                    grd.addColorStop(1, 'transparent');
-                    ctx.fillStyle = grd;
-                    ctx.fillRect(p.x - size * 5, p.y - size * 5, size * 10, size * 10);
-                }
+                const size = Math.max(1, 1.4 * p.scale);
+                ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
             }
+            ctx.restore();
+
+            // Fresh impacts: the flash, expanding detection ring and afterglow that
+            // visibly "seeds" the fringe in the area the particle just landed.
+            const sprite = glowSprite(settledColor.r, settledColor.g, settledColor.b);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = freshStart; i < screenHits.length; i++) {
+                const hit = screenHits[i];
+                const age = time - hit.bornAt;
+                const p = project(hit.x, hit.y, hit.z);
+                if (!p) continue;
+
+                const { r, g, b } = hit.color;
+                const life = 1 - age / IMPACT_GLOW_SECONDS;
+
+                // Afterglow that fades as the spot settles into the built-up pattern
+                const glowSize = Math.max(3.5, 8 * p.scale) * (1 + (1 - life) * 0.7);
+                ctx.globalAlpha = life * life * 0.6;
+                ctx.drawImage(sprite, p.x - glowSize, p.y - glowSize, glowSize * 2, glowSize * 2);
+
+                // Expanding ring marks the instant of detection
+                if (params.glowEffects && age < IMPACT_RING_SECONDS) {
+                    const t = age / IMPACT_RING_SECONDS;
+                    ctx.globalAlpha = (1 - t) * 0.45;
+                    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.lineWidth = Math.max(0.5, 1.5 * p.scale * (1 - t));
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, Math.max(0.8, (1.5 + t * 11) * p.scale), 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Hot core of the detection
+                const core = Math.max(1, 1.7 * p.scale);
+                ctx.globalAlpha = 0.35 + life * 0.6;
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, core, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.5 * life + 0.15;
+                ctx.fillStyle = 'rgb(255, 255, 255)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, core * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
 
         function drawDetector() {
@@ -2179,6 +2397,15 @@
             document.getElementById('statFired').textContent = totalFired.toLocaleString();
             document.getElementById('statHits').textContent = totalHits.toLocaleString();
 
+            const buildUp = document.getElementById('statBuild');
+            if (buildUp) {
+                buildUp.textContent = totalHits === 0
+                    ? 'Awaiting impact'
+                    : patternBuildProgress >= 1
+                        ? 'Developed'
+                        : `Developing ${Math.round(patternBuildProgress * 100)}%`;
+            }
+
             const fringeSpacingMm = getWavelengthMm() * getScreenDistanceMm() / getSlitSeparationMm();
             const singleSlitWidthMm = 2 * getWavelengthMm() * getScreenDistanceMm() / getSlitWidthMm();
             const isSingleSlit = params.numSlits === 1;
@@ -2216,6 +2443,7 @@
             particles = [];
             screenHits = [];
             intensityBins = new Float32Array(200);
+            clearPatternExposure();
             totalFired = 0;
             totalHits = 0;
             emissionAccumulator = 0;
@@ -2397,6 +2625,7 @@
 
         setupToggle('glowEffects', 'glowEffects');
         setupToggle('trails', 'trails');
+        setupToggle('predictedPattern', 'predictedPattern');
 
         // Action buttons
         document.getElementById('resetBtn').addEventListener('click', resetExperiment);
@@ -2404,6 +2633,7 @@
         document.getElementById('clearBtn').addEventListener('click', () => {
             screenHits = [];
             intensityBins = new Float32Array(200);
+            clearPatternExposure();
             totalHits = 0;
             drawIntensityGraph();
             updateUI();
