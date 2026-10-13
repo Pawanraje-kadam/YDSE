@@ -381,6 +381,11 @@
             backdrop-filter: blur(10px);
         }
 
+        .view-btn-slits {
+            border-color: rgba(0, 212, 255, 0.28);
+            color: #9fdcf5;
+        }
+
         .view-btn:hover, .view-btn.active {
             border-color: rgba(0, 212, 255, 0.3);
             color: #00d4ff;
@@ -1014,6 +1019,14 @@
                 </label>
             </div>
             <p class="slit-hint">The screen stays dark until particles land. Fringes develop only from real impacts, over about 5 seconds. Switch this on to ghost the textbook prediction on top for comparison.</p>
+            <div class="toggle-row">
+                <span class="label">Slit Close-up</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="slitsPanel">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="slit-hint">Drops a schematic close-up of the slit plane under the scene: wavelets leaving each slit, the bright fans they build, and a path difference you can click to measure. Wavefronts are enlarged so they are visible next to the slit gap.</p>
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Animation Speed</span>
@@ -1076,6 +1089,11 @@
                 <span><strong>Bright</strong> bands are constructive interference; <strong>dark</strong> bands are destructive interference.</span>
             </div>
 
+            <div class="teaching-note">
+                <span aria-hidden="true">🔍</span>
+                <span><strong>Slits View</strong> zooms onto the barrier and opens a close-up of the slits, where you can watch the wavelets from each slit overlap and click to measure a path difference.</span>
+            </div>
+
             <div class="equation-box" id="equationBox">
                 <span class="equation-main" id="equationMain">Δy = λL / d</span>
                 <span class="equation-note" id="equationNote">Approximate spacing between bright fringes for small angles.</span>
@@ -1099,6 +1117,7 @@
     <!-- Bottom View Controls -->
     <div class="bottom-bar">
         <button class="view-btn active" data-view="perspective">3D Perspective</button>
+        <button class="view-btn view-btn-slits" data-view="slits">🔍 Slits View</button>
         <button class="view-btn" data-view="top">Top View</button>
         <button class="view-btn" data-view="side">Side View</button>
         <button class="view-btn" data-view="screen">Screen View</button>
@@ -1123,15 +1142,19 @@
         let fps = 60;
         let emissionAccumulator = 0;
 
-        // Camera
+        // Camera (x/shiftY/fov are used by the slit close-up view)
         let camera = {
             x: 0, y: 80, z: -200,
             rotX: -0.35, rotY: -0.4, rotZ: 0,
             fov: 600,
+            shiftY: 0,
+            targetX: 0,
             targetRotX: -0.35,
             targetRotY: -0.4,
             targetY: 80,
-            targetZ: -200
+            targetZ: -200,
+            targetFov: 600,
+            targetShiftY: 0
         };
 
         let isDragging = false;
@@ -1155,6 +1178,7 @@
             delayedChoice: false,
             glowEffects: true,
             trails: true,
+            slitsPanel: false,
             speed: 1.0
         };
 
@@ -1166,6 +1190,19 @@
         let maxParticles = 3000;
         let maxScreenHits = 15000;
         let wavePhase = 0;
+
+        // Slit close-up ("Slits View") state
+        const SLITS_DIR = { x: -0.16, y: 0.17, z: -0.97 };   // camera offset from the barrier
+        const SLITS_DIST = 60;                               // ...at this distance
+        const SLITS_RINGS = 26;                              // wavefronts drawn per slit
+        let viewMode = 'perspective';
+        let slitsZoom = 1;
+        let panelRect = { x: 24, y: 0, w: 320, h: 200 };
+        let panelOnTop = false;
+        let panelDocked = false;     // control panel docked to the bottom of the screen
+        let controlTop = 0;
+        let closeupProbe = null;        // {x, y} in canvas pixels, inside the diagram
+        let closeupDrag = false;
 
         // Measurement bins and the screen's display scale. Physical positions are
         // converted to scene units only for drawing; the wave calculation stays in mm.
@@ -1206,6 +1243,9 @@
                 graphCanvas.height = Math.round(rect.height * pixelRatio);
                 graphCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
             }
+
+            updateLayout();
+            if (viewMode === 'slits') updateSlitsCamera();
         }
         window.addEventListener('resize', resize);
         resize();
@@ -1234,7 +1274,7 @@
             const scale = camera.fov / p.z;
             return {
                 x: W / 2 + p.x * scale,
-                y: H / 2 - p.y * scale,
+                y: H / 2 - p.y * scale + camera.shiftY,
                 z: p.z,
                 scale: scale
             };
@@ -1524,7 +1564,16 @@
             // Background
             ctx.fillStyle = '#0a0a0f';
             ctx.fillRect(0, 0, W, H);
-            
+
+            // Slits View: park the camera on the barrier and draw the close-up
+            // instead of the whole apparatus.
+            if (viewMode === 'slits') {
+                drawSlitsScene();
+                if (params.glowEffects) drawGlow();
+                if (params.slitsPanel) drawSlitsPanel();
+                return;
+            }
+
             // Draw subtle grid
             drawGrid();
             
@@ -1563,6 +1612,11 @@
             // Post-processing glow
             if (params.glowEffects) {
                 drawGlow();
+            }
+
+            // Optional schematic close-up, available in every view
+            if (params.slitsPanel) {
+                drawSlitsPanel();
             }
         }
 
@@ -2025,7 +2079,11 @@
                 if (!pp) continue;
                 
                 const { r, g, b } = p.color;
-                const size = p.size * pp.scale * 0.8;
+                // Up close a scene-sized particle would fill the screen, so its
+                // drawn radius is capped in the slit close-up.
+                const size = viewMode === 'slits'
+                    ? clamp(p.size * pp.scale * 0.8, 1.4, 4.5)
+                    : p.size * pp.scale * 0.8;
                 
                 if (size < 0.3) continue;
                 
@@ -2219,6 +2277,949 @@
             grd.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
             ctx.fillStyle = grd;
             ctx.fillRect(0, 0, W, H);
+        }
+
+        // ==========================================
+        // SLIT CLOSE-UP — "SLITS VIEW"
+        // ==========================================
+        // A real double slit is tiny: with the default settings the two slits are
+        // 3 scene units apart inside a 500 unit long apparatus, so at normal zoom
+        // they are a couple of pixels wide and impossible to see. This mode fixes
+        // that in two ways:
+        //
+        //   1. It parks the camera right in front of the barrier and draws the
+        //      barrier as a solid slab with the apertures cut out of it, with the
+        //      Huygens wavelets leaving every slit and the static interference
+        //      field those wavelets build (the bright fans / dark nodal lines).
+        //   2. It draws a schematic "slit close-up" panel underneath that spells
+        //      out the mechanism: crests leaving both slits, where they arrive
+        //      together (bright fringe) and where they arrive opposite (dark).
+        //
+        // The wavelength is ~1000x smaller than the slit separation, so it cannot
+        // be drawn to scale next to it. Both pictures therefore use an enlarged
+        // wavelength, and the factor is always reported on screen.
+
+        // ---- Layout -----------------------------------------------------------
+        // The close-up panel is docked into whatever space the two side panels and
+        // the bottom bar leave free, so the 3D slit close-up keeps the rest.
+        function updateLayout() {
+            const cpEl = document.getElementById('controlPanel');
+            const ipEl = document.getElementById('infoPanel');
+            const bbEl = document.querySelector('.bottom-bar');
+            const cp = cpEl ? cpEl.getBoundingClientRect() : null;
+            const ip = (ipEl && getComputedStyle(ipEl).display !== 'none')
+                ? ipEl.getBoundingClientRect() : null;
+            const bb = (bbEl && getComputedStyle(bbEl).display !== 'none')
+                ? bbEl.getBoundingClientRect() : null;
+
+            const docked = !!cp && cp.top > H * 0.5;   // control panel docked to the bottom
+            panelDocked = docked;
+            controlTop = cp ? cp.top : H;
+            const left = (!cp || docked) ? 20 : Math.max(20, cp.right + 20);
+            const right = (ip && !docked ? ip.left : W) - 20;
+            const bottom = (bb ? bb.top : H - 10) - 14;
+            const top = 76;
+
+            if (!docked && right - left >= 430) {
+                panelOnTop = false;
+                const h = clamp((bottom - top) * 0.54, 250, 460);
+                const w = Math.min(right - left, 1180);
+                panelRect = { x: left + (right - left - w) / 2, y: bottom - h, w: w, h: h };
+            } else {
+                panelOnTop = true;
+                const h = clamp(H * 0.40, 190, 320);
+                panelRect = { x: 20, y: docked ? 66 : top, w: Math.max(200, W - 40), h: h };
+            }
+        }
+
+        // Vertical band of the canvas left over for the 3D close-up once the
+        // schematic panel has taken its share.
+        function slitsSceneBounds() {
+            const bottom = panelDocked ? Math.min(H - 60, controlTop - 12) : H - 60;
+            if (!params.slitsPanel) return { top: 70, bottom: bottom };
+            const r = panelRect;
+            return panelOnTop
+                ? { top: r.y + r.h + 18, bottom: bottom }
+                : { top: 86, bottom: r.y - 14 };
+        }
+
+        function slitsVisibleHeight() {
+            const b = slitsSceneBounds();
+            return Math.max(150, b.bottom - b.top);
+        }
+
+        function slitsSceneShiftY() {
+            const b = slitsSceneBounds();
+            return (b.top + b.bottom) / 2 - H / 2;
+        }
+
+        // Point the camera at the barrier from a fixed 3/4 angle and choose the
+        // focal length that makes the slit separation fill ~40% of the free height.
+        function updateSlitsCamera() {
+            const len = Math.hypot(SLITS_DIR.x, SLITS_DIR.y, SLITS_DIR.z);
+            const ux = SLITS_DIR.x / len, uy = SLITS_DIR.y / len, uz = SLITS_DIR.z / len;
+
+            camera.targetX = -50 + ux * SLITS_DIST;
+            camera.targetY = uy * SLITS_DIST;
+            camera.targetZ = uz * SLITS_DIST;
+
+            // Forward axis of the projection, so the barrier lands dead centre.
+            const fx = -ux, fy = -uy, fz = -uz;
+            camera.targetRotX = Math.asin(clamp(fy, -1, 1));
+            camera.targetRotY = Math.atan2(-fx, fz);
+
+            const separation = Math.max(0.2, getSlitSeparationMm() * SCENE_UNITS_PER_MM);
+            const visibleH = slitsVisibleHeight();
+            const wanted = Math.min(0.40 * visibleH / separation, 0.085 * W);
+            camera.targetFov = clamp(wanted * SLITS_DIST * slitsZoom, 150, 60000);
+            camera.targetShiftY = slitsSceneShiftY();
+        }
+
+        // ---- Small helpers ----------------------------------------------------
+
+        function cameraForward() {
+            const rx = camera.rotX, ry = camera.rotY;
+            return {
+                x: -Math.cos(rx) * Math.sin(ry),
+                y: Math.sin(rx),
+                z: Math.cos(rx) * Math.cos(ry)
+            };
+        }
+
+        // Screen point -> the point where that view ray crosses the z = 0 plane,
+        // which is the plane the particles and wavefronts live in.
+        function unprojectToZ0(sx, sy) {
+            const rx = camera.rotX, ry = camera.rotY;
+            const vx = (sx - W / 2) / camera.fov;
+            const vy = -(sy - H / 2 - camera.shiftY) / camera.fov;
+            const vz = 1;
+            const y1 = vy * Math.cos(rx) + vz * Math.sin(rx);
+            const z1 = -vy * Math.sin(rx) + vz * Math.cos(rx);
+            const x2 = vx * Math.cos(ry) - z1 * Math.sin(ry);
+            const z2 = vx * Math.sin(ry) + z1 * Math.cos(ry);
+            if (Math.abs(z2) < 1e-9) return null;
+            const t = -camera.z / z2;
+            if (t <= 0) return null;
+            return { x: camera.x + t * x2, y: camera.y + t * y1 };
+        }
+
+        function roundRectPath(c, x, y, w, h, r) {
+            const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+            c.beginPath();
+            c.moveTo(x + rad, y);
+            c.lineTo(x + w - rad, y);
+            c.quadraticCurveTo(x + w, y, x + w, y + rad);
+            c.lineTo(x + w, y + h - rad);
+            c.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+            c.lineTo(x + rad, y + h);
+            c.quadraticCurveTo(x, y + h, x, y + h - rad);
+            c.lineTo(x, y + rad);
+            c.quadraticCurveTo(x, y, x + rad, y);
+            c.closePath();
+        }
+
+        function slitsWaveColor() {
+            return params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+        }
+
+        // Visual wavelength for the close-up: ~26 px on screen at the slits.
+        function slitsLambdaWorld() {
+            const scale = camera.fov / SLITS_DIST;
+            return clamp(26 / Math.max(0.001, scale), 0.02, 8);
+        }
+
+        function slitsWavePhase() {
+            return (time * 1.6) % 1;
+        }
+
+        // ==========================================
+        // 3D SLIT CLOSE-UP
+        // ==========================================
+
+        function drawSlitsScene() {
+            // The wave plane sits at z = 0, halfway through the 30 unit deep
+            // barrier, so the wall is split: the far half goes behind the waves
+            // and the near half in front of them. What stays visible is exactly
+            // what you can see through the slit tunnels.
+            drawBarrierSlabs(0, 15, 0.5);   // far half, in shadow: the tunnel reads as depth
+            drawSlitsInterferenceField();
+            drawSlitWavelets();
+            drawBarrierSlabs(-15, 0, 1);
+            drawParticles();
+            drawSlitsAnnotations();
+        }
+
+        // The barrier as a solid slab with the apertures cut out of it.
+        function drawBarrierSlabs(zNear, zFar, brightness) {
+            const barrierX = -50, halfT = 2, depth = 15, barrierH = 140;
+            const halfSlit = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
+            const sorted = getSlitPositionsScene().sort((a, b) => a - b);
+
+            // The wall is hundreds of units tall; only keep the part that can
+            // actually be on screen so no vertex lands behind the camera.
+            const scale = camera.fov / SLITS_DIST;
+            const span = clamp(1.6 * (H / 2) / Math.max(0.001, scale), 6, barrierH);
+            const yLo = -span, yHi = span;
+
+            const segments = [{ y1: Math.max(-barrierH, yLo), y2: sorted[0] - halfSlit }];
+            for (let i = 0; i < sorted.length - 1; i++) {
+                segments.push({ y1: sorted[i] + halfSlit, y2: sorted[i + 1] - halfSlit });
+            }
+            segments.push({
+                y1: sorted[sorted.length - 1] + halfSlit,
+                y2: Math.min(barrierH, yHi)
+            });
+
+            const fwd = cameraForward();
+            const toCam = { x: -fwd.x, y: -fwd.y, z: -fwd.z };
+            const faces = [];
+
+            for (const seg of segments) {
+                if (seg.y2 - seg.y1 < 0.02) continue;
+                const y1 = clamp(seg.y1, yLo, yHi);
+                const y2 = clamp(seg.y2, yLo, yHi);
+                if (y2 - y1 < 0.02) continue;
+
+                const box = [
+                    { n: [-1, 0, 0], p: [[barrierX - halfT, y1, zNear], [barrierX - halfT, y2, zNear], [barrierX - halfT, y2, zFar], [barrierX - halfT, y1, zFar]] },
+                    { n: [1, 0, 0], p: [[barrierX + halfT, y1, zNear], [barrierX + halfT, y2, zNear], [barrierX + halfT, y2, zFar], [barrierX + halfT, y1, zFar]] },
+                    { n: [0, -1, 0], p: [[barrierX - halfT, y1, zNear], [barrierX + halfT, y1, zNear], [barrierX + halfT, y1, zFar], [barrierX - halfT, y1, zFar]] },
+                    { n: [0, 1, 0], p: [[barrierX - halfT, y2, zNear], [barrierX + halfT, y2, zNear], [barrierX + halfT, y2, zFar], [barrierX - halfT, y2, zFar]] },
+                    { n: [0, 0, -1], p: [[barrierX - halfT, y1, zNear], [barrierX + halfT, y1, zNear], [barrierX + halfT, y2, zNear], [barrierX - halfT, y2, zNear]] },
+                    { n: [0, 0, 1], p: [[barrierX - halfT, y1, zFar], [barrierX + halfT, y1, zFar], [barrierX + halfT, y2, zFar], [barrierX - halfT, y2, zFar]] }
+                ];
+
+                for (const face of box) {
+                    const facing = face.n[0] * toCam.x + face.n[1] * toCam.y + face.n[2] * toCam.z;
+                    if (facing <= 0.01) continue;
+                    const pts = [];
+                    let ok = true;
+                    let depthSum = 0;
+                    for (const p of face.p) {
+                        const q = project(p[0], p[1], p[2]);
+                        if (!q) { ok = false; break; }
+                        pts.push(q);
+                        depthSum += q.z;
+                    }
+                    if (!ok) continue;
+                    faces.push({ pts: pts, depth: depthSum / pts.length, shade: facing });
+                }
+            }
+
+            faces.sort((a, b) => b.depth - a.depth);
+            for (const face of faces) {
+                const light = 0.14 + 0.86 * face.shade;
+                ctx.beginPath();
+                ctx.moveTo(face.pts[0].x, face.pts[0].y);
+                for (let i = 1; i < face.pts.length; i++) ctx.lineTo(face.pts[i].x, face.pts[i].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgb(${Math.round((72 * light + 6) * brightness)}, ${Math.round((80 * light + 8) * brightness)}, ${Math.round((126 * light + 14) * brightness)})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(150, 170, 235, ${((0.10 + 0.22 * face.shade) * brightness).toFixed(3)})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // Apertures: bright rims plus the tunnel edges, so the slits read as
+            // openings you can see through rather than gaps in a flat sheet.
+            const col = slitsWaveColor();
+            for (const slitY of sorted) {
+                const yA = slitY - halfSlit, yB = slitY + halfSlit;
+
+                // glow spilling out of the opening (only for the front half),
+                // laid down first so the rim and the shaded mouth sit on top
+                const sp = zNear <= -depth + 0.001 ? project(barrierX, slitY, -depth) : null;
+                if (sp) {
+                    const grd = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 54);
+                    grd.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, 0.42)`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(sp.x - 54, sp.y - 54, 108, 108);
+                }
+
+                for (const zz of [zNear, zFar]) {
+                    const corners = [
+                        project(barrierX - halfT, yA, zz),
+                        project(barrierX + halfT, yA, zz),
+                        project(barrierX + halfT, yB, zz),
+                        project(barrierX - halfT, yB, zz)
+                    ];
+                    if (!corners.every(Boolean)) continue;
+                    const near = zz === zNear;
+                    ctx.beginPath();
+                    ctx.moveTo(corners[0].x, corners[0].y);
+                    for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+                    ctx.closePath();
+                    if (near) {
+                        // soft halo then a crisp edge, so the opening reads clearly
+                        ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.22)`;
+                        ctx.lineWidth = 7;
+                        ctx.stroke();
+                    }
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${near ? 0.95 : 0.3})`;
+                    ctx.lineWidth = near ? 2.2 : 1;
+                    ctx.stroke();
+
+                    // Shade the mouth: a slit is a hole, so it should read as
+                    // depth rather than as another lit surface.
+                    if (near) {
+                        ctx.fillStyle = 'rgba(4, 6, 14, 0.6)';
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Time-averaged interference of the slits, painted on the z = 0 plane to
+        // the right of the barrier. It does not change with time, so it is only
+        // rebuilt when the camera or the slit geometry moves.
+        const field3D = { key: '', canvas: null };
+
+        function drawSlitsInterferenceField() {
+            if (params.numSlits < 1) return;
+            const exit = project(-50 + 2.6, 0, 0);
+            if (!exit) return;
+            const region = { x: clamp(exit.x, 0, W), y: 0, w: W - clamp(exit.x, 0, W), h: H };
+            if (region.w < 40) return;
+
+            const lambda = slitsLambdaWorld();
+            const slits = getSlitPositionsScene();
+            const col = slitsWaveColor();
+            const key = [
+                region.x | 0, region.w | 0, H | 0,
+                camera.fov.toFixed(0), camera.rotX.toFixed(3), camera.rotY.toFixed(3),
+                camera.x.toFixed(2), camera.y.toFixed(2), camera.z.toFixed(2), camera.shiftY.toFixed(0),
+                lambda.toFixed(4), slits.length, slits[0].toFixed(3), col.r, col.g, col.b
+            ].join('|');
+
+            if (field3D.key !== key) {
+                buildSlitsInterferenceField(region, lambda, slits, col);
+                field3D.key = key;
+            }
+            if (!field3D.canvas) return;
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(field3D.canvas, region.x, region.y, region.w, region.h);
+            ctx.restore();
+        }
+
+        function buildSlitsInterferenceField(region, lambda, slits, col) {
+            const cell = 7;
+            const fw = Math.max(1, Math.ceil(region.w / cell));
+            const fh = Math.max(1, Math.ceil(region.h / cell));
+            let cv = field3D.canvas;
+            if (!cv || cv.width !== fw || cv.height !== fh) {
+                cv = document.createElement('canvas');
+                cv.width = fw;
+                cv.height = fh;
+                field3D.canvas = cv;
+            }
+            const sctx = cv.getContext('2d');
+            const img = sctx.createImageData(fw, fh);
+            const data = img.data;
+            const k = 2 * Math.PI / lambda;
+            const spread = lambda * 30;
+            const invN2 = 1 / (slits.length * slits.length);
+
+            for (let j = 0; j < fh; j++) {
+                const sy = region.y + (j + 0.5) * cell;
+                for (let i = 0; i < fw; i++) {
+                    const sx = region.x + (i + 0.5) * cell;
+                    const hit = unprojectToZ0(sx, sy);
+                    let value = 0;
+                    if (hit && hit.x > -50) {
+                        let re = 0, im = 0;
+                        for (let s = 0; s < slits.length; s++) {
+                            const dx = hit.x + 50;
+                            const dy = hit.y - slits[s];
+                            const r = Math.sqrt(dx * dx + dy * dy);
+                            const amp = 1 / Math.sqrt(1 + r / spread);
+                            re += amp * Math.cos(k * r);
+                            im += amp * Math.sin(k * r);
+                        }
+                        value = (re * re + im * im) * invN2;
+                    }
+                    const alpha = Math.min(1, value) ** 1.3 * 0.5;
+                    const idx = (j * fw + i) * 4;
+                    data[idx] = col.r;
+                    data[idx + 1] = col.g;
+                    data[idx + 2] = col.b;
+                    data[idx + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+                }
+            }
+            sctx.putImageData(img, 0, 0);
+        }
+
+        // Animated wavefronts: plane crests arriving, Huygens wavelets leaving.
+        function drawSlitWavelets() {
+            const barrierX = -50;
+            const col = slitsWaveColor();
+            const slits = getSlitPositionsScene();
+            const lambda = slitsLambdaWorld();
+            const phase = slitsWavePhase();
+            const maxR = lambda * SLITS_RINGS;
+            const scale = camera.fov / SLITS_DIST;
+            const halfSpan = clamp(1.5 * (H / 2) / Math.max(0.001, scale), 4, 60);
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Incoming plane wavefronts (blocked by the barrier).
+            for (let n = 0; n < SLITS_RINGS; n++) {
+                const wx = barrierX - (n + phase) * lambda;
+                const dist = (n + phase) * lambda;
+                const fade = 1 - dist / maxR;
+                if (fade <= 0) break;
+                const a = project(wx, halfSpan, 0);
+                const b = project(wx, -halfSpan, 0);
+                if (!a || !b) continue;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.07 + 0.28 * fade).toFixed(3)})`;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.quadraticCurveTo((a.x + b.x) / 2 - 14, (a.y + b.y) / 2, b.x, b.y);
+                ctx.stroke();
+            }
+
+            // Huygens wavelets spreading from every slit.
+            ctx.lineWidth = 1.4;
+            for (const slitY of slits) {
+                for (let n = 0; n < SLITS_RINGS; n++) {
+                    const r = (n + phase) * lambda;
+                    if (r < lambda * 0.35) continue;
+                    const fade = 1 - r / maxR;
+                    if (fade <= 0) break;
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.10 + 0.38 * fade).toFixed(3)})`;
+                    ctx.beginPath();
+                    let started = false;
+                    for (let a = -1.3; a <= 1.3; a += 0.055) {
+                        const wx = barrierX + r * Math.cos(a);
+                        const wy = slitY + r * Math.sin(a);
+                        if (wx < barrierX + 1.8) { started = false; continue; }
+                        const p = project(wx, wy, 0);
+                        if (!p || p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) {
+                            started = false;
+                            continue;
+                        }
+                        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+                        else ctx.lineTo(p.x, p.y);
+                    }
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawSlitsAnnotations() {
+            const barrierX = -50;
+            const slits = getSlitPositionsScene();
+            const halfSlit = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
+            const col = slitsWaveColor();
+            const near = -15;
+            const wallLeft = project(barrierX - 2, 0, near);
+            const wallRight = project(barrierX + 2, 0, near);
+            if (!wallLeft || !wallRight) return;
+
+            ctx.save();
+            ctx.font = '11px system-ui';
+            ctx.textBaseline = 'middle';
+
+            // Slit tags: S1, S2, ...
+            for (let i = 0; i < slits.length; i++) {
+                const p = project(barrierX, slits[i], near);
+                if (!p) continue;
+                ctx.textAlign = 'right';
+                ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.85)`;
+                ctx.fillText(`S${i + 1}`, wallLeft.x - 12, p.y);
+            }
+
+            // Separation d between the outer slits.
+            if (slits.length > 1) {
+                const a = project(barrierX, slits[0], near);
+                const b = project(barrierX, slits[slits.length - 1], near);
+                if (a && b) {
+                    const x = wallLeft.x - 58;
+                    ctx.strokeStyle = 'rgba(190, 205, 240, 0.55)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, a.y);
+                    ctx.lineTo(x, b.y);
+                    ctx.moveTo(x - 5, a.y);
+                    ctx.lineTo(x + 5, a.y);
+                    ctx.moveTo(x - 5, b.y);
+                    ctx.lineTo(x + 5, b.y);
+                    ctx.stroke();
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = 'rgba(214, 226, 250, 0.9)';
+                    ctx.fillText(`d = ${(slits.length > 2 ? getSlitSeparationMm() * (slits.length - 1) : getSlitSeparationMm()).toFixed(2)} mm`,
+                        x - 9, (a.y + b.y) / 2);
+                }
+            }
+
+            // Slit width a, measured on the first opening.
+            const wTop = project(barrierX + 2, slits[0] - halfSlit, near);
+            const wBot = project(barrierX + 2, slits[0] + halfSlit, near);
+            if (wTop && wBot) {
+                const x = wallRight.x + 16;
+                ctx.strokeStyle = 'rgba(190, 205, 240, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, wTop.y);
+                ctx.lineTo(x, wBot.y);
+                ctx.moveTo(x - 4, wTop.y);
+                ctx.lineTo(x + 4, wTop.y);
+                ctx.moveTo(x - 4, wBot.y);
+                ctx.lineTo(x + 4, wBot.y);
+                ctx.stroke();
+                ctx.textAlign = 'left';
+                ctx.fillStyle = 'rgba(214, 226, 250, 0.85)';
+                ctx.fillText(`a = ${getSlitWidthMm().toFixed(2)} mm`, x + 8, (wTop.y + wBot.y) / 2);
+            }
+
+            // Wavelength bracket between two incoming crests.
+            const lambda = slitsLambdaWorld();
+            const c1 = project(barrierX - lambda * 5, 2, 0);
+            const c2 = project(barrierX - lambda * 6, 2, 0);
+            if (c1 && c2) {
+                const y = c1.y;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.7)`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(c2.x, y);
+                ctx.lineTo(c1.x, y);
+                ctx.moveTo(c2.x, y - 4);
+                ctx.lineTo(c2.x, y + 4);
+                ctx.moveTo(c1.x, y - 4);
+                ctx.lineTo(c1.x, y + 4);
+                ctx.stroke();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.9)`;
+                ctx.fillText('λ', (c1.x + c2.x) / 2, y - 11);
+            }
+
+            // Section captions, kept inside the band not covered by the panel.
+            const bounds = slitsSceneBounds();
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'rgba(130, 145, 185, 0.65)';
+            ctx.fillText('PLANE WAVES IN', 26, bounds.top + 14);
+            ctx.textAlign = 'right';
+            ctx.fillText('WAVELETS FROM EACH SLIT  →  TO SCREEN', W - 26, bounds.top + 14);
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'rgba(120, 135, 175, 0.6)';
+            ctx.fillText('Barrier close-up — wavefronts are enlarged, they are not to scale with d.', 26, bounds.bottom - 8);
+            ctx.restore();
+        }
+
+        // ==========================================
+        // "HOW IT HAPPENS" CLOSE-UP PANEL
+        // ==========================================
+
+        function slitsPanelGeometry() {
+            const r = panelRect;
+            const headerH = 34, footerH = 44, padX = 18;
+            const dh = r.h - headerH - footerH;
+            if (r.w < 260 || dh < 110) return null;
+
+            const dx = r.x + padX;
+            const dy = r.y + headerH;
+            const dw = r.w - padX * 2;
+            const cy = dy + dh / 2;
+            const barrierX = dx + Math.min(170, dw * 0.20);
+            const rightX = dx + dw - 16;
+            const D = rightX - barrierX;
+            const n = Math.max(1, params.numSlits);
+            const dMm = getSlitSeparationMm();
+            const aMm = getSlitWidthMm();
+
+            let dPx = clamp(dh * 0.38 * (dMm / 0.5), 20, dh * 0.70);
+            dPx = Math.min(dPx, (dh * 0.74) / Math.max(1, n - 1));
+            const aPx = clamp(dPx * (aMm / dMm), 3, dPx * 0.8);
+            const lambdaPx = clamp(0.042 * dh * (params.wavelength / 550), 8, 42);
+
+            const slits = [];
+            for (let i = 0; i < n; i++) slits.push(cy + (i - (n - 1) / 2) * dPx);
+
+            return {
+                dx: dx, dy: dy, dw: dw, dh: dh, cy: cy,
+                barrierX: barrierX, rightX: rightX, D: D,
+                dPx: dPx, aPx: aPx, lambdaPx: lambdaPx, slits: slits,
+                wallHalf: clamp(dw * 0.012, 6, 13)
+            };
+        }
+
+        const closeupField = { key: '', canvas: null };
+
+        function drawSlitsPanel() {
+            const r = panelRect;
+            if (r.w < 260 || r.h < 170) return;
+            const g = slitsPanelGeometry();
+            if (!g) return;
+
+            ctx.save();
+            roundRectPath(ctx, r.x, r.y, r.w, r.h, 16);
+            ctx.fillStyle = 'rgba(7, 9, 18, 0.93)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.22)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.clip();
+
+            // ---- header ----
+            const col = slitsWaveColor();
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.font = '600 12px system-ui';
+            ctx.fillStyle = 'rgba(190, 232, 255, 0.95)';
+            ctx.fillText('SLIT CLOSE-UP  ·  how the two slits build the fringes', r.x + 18, r.y + 18);
+
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'right';
+            ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
+            ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - 18, r.y + 18);
+
+            drawCloseupDiagram(g, col);
+            drawCloseupFooter(r, g);
+
+            ctx.restore();
+        }
+
+        function drawCloseupDiagram(g, col) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.dx, g.dy, g.dw, g.dh);
+            ctx.clip();
+
+            // ---- static interference field (bright fans / dark nodal lines) ----
+            const key = [
+                g.dx | 0, g.dy | 0, g.dw | 0, g.dh | 0,
+                g.dPx.toFixed(1), g.lambdaPx.toFixed(2), g.slits.length,
+                col.r, col.g, col.b
+            ].join('|');
+            if (closeupField.key !== key) {
+                buildCloseupField(g, col);
+                closeupField.key = key;
+            }
+            if (closeupField.canvas) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(closeupField.canvas, g.barrierX, g.dy, g.rightX - g.barrierX, g.dh);
+                ctx.restore();
+            }
+
+            const phase = slitsWavePhase();
+            const maxR = Math.hypot(g.D, g.dh * 0.75);
+
+            // ---- incoming plane wavefronts ----
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.dx, g.dy, g.barrierX - g.dx, g.dh);
+            ctx.clip();
+            ctx.lineWidth = 1.2;
+            for (let n = 0; n < 60; n++) {
+                const x = g.barrierX - (n + phase) * g.lambdaPx;
+                if (x < g.dx - 20) break;
+                const fade = 1 - (g.barrierX - x) / maxR;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.08 + 0.3 * Math.max(0, fade)).toFixed(3)})`;
+                ctx.beginPath();
+                ctx.moveTo(x, g.dy);
+                ctx.quadraticCurveTo(x - 16, g.cy, x, g.dy + g.dh);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // ---- Huygens wavelets leaving each slit ----
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.barrierX, g.dy, g.rightX - g.barrierX, g.dh);
+            ctx.clip();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineWidth = 1.3;
+            const rings = Math.ceil(maxR / g.lambdaPx);
+            for (const sy of g.slits) {
+                for (let n = 0; n < rings; n++) {
+                    const rad = (n + phase) * g.lambdaPx;
+                    if (rad < g.lambdaPx * 0.3) continue;
+                    const fade = 1 - rad / maxR;
+                    if (fade <= 0) break;
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.06 + 0.26 * fade).toFixed(3)})`;
+                    ctx.beginPath();
+                    ctx.arc(g.barrierX, sy, rad, -1.35, 1.35);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+
+            // ---- barrier with the slits cut out ----
+            const bw = g.wallHalf;
+            const segments = [{ y1: g.dy, y2: g.slits[0] - g.aPx / 2 }];
+            for (let i = 0; i < g.slits.length - 1; i++) {
+                segments.push({ y1: g.slits[i] + g.aPx / 2, y2: g.slits[i + 1] - g.aPx / 2 });
+            }
+            segments.push({ y1: g.slits[g.slits.length - 1] + g.aPx / 2, y2: g.dy + g.dh });
+
+            for (const seg of segments) {
+                const h = seg.y2 - seg.y1;
+                if (h < 1) continue;
+                const grd = ctx.createLinearGradient(g.barrierX - bw, 0, g.barrierX + bw, 0);
+                grd.addColorStop(0, '#232842');
+                grd.addColorStop(0.45, '#4c5680');
+                grd.addColorStop(1, '#1b2036');
+                ctx.fillStyle = grd;
+                roundRectPath(ctx, g.barrierX - bw, seg.y1, bw * 2, h, Math.min(3, h / 2));
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(150, 170, 235, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // glowing slit mouths
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (const sy of g.slits) {
+                const grd = ctx.createRadialGradient(g.barrierX, sy, 0, g.barrierX, sy, Math.max(14, g.aPx * 2));
+                grd.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, 0.55)`);
+                grd.addColorStop(1, 'transparent');
+                ctx.fillStyle = grd;
+                ctx.fillRect(g.barrierX - 40, sy - 40, 80, 80);
+            }
+            ctx.restore();
+
+            // ---- bright-fringe directions (m = 0, ±1, ±2 ...) ----
+            // A single slit has no second source to interfere with, so it gets no
+            // fringe directions or bands.
+            ctx.save();
+            if (g.slits.length > 1) {
+                ctx.font = '10px system-ui';
+                ctx.textBaseline = 'middle';
+                ctx.setLineDash([5, 5]);
+                let lastLabel = -1e9;
+                for (let m = -6; m <= 6; m++) {
+                    const ratio = m * g.lambdaPx / g.dPx;
+                    if (Math.abs(ratio) > 0.99) continue;
+                    const yEnd = g.cy + g.D * Math.tan(Math.asin(ratio));
+                    if (yEnd < g.dy + 4 || yEnd > g.dy + g.dh - 4) continue;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(g.barrierX + bw, g.cy);
+                    ctx.lineTo(g.rightX, yEnd);
+                    ctx.stroke();
+                    if (Math.abs(yEnd - lastLabel) > 15) {
+                        lastLabel = yEnd;
+                        ctx.setLineDash([]);
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = 'rgba(226, 238, 255, 0.8)';
+                        ctx.fillText(`m=${m > 0 ? '+' : ''}${m}`, g.rightX - 6, yEnd);
+                        ctx.setLineDash([5, 5]);
+                    }
+                }
+                ctx.setLineDash([]);
+
+                // ---- the bands those directions paint on the screen ----
+                const stripW = 11;
+                for (let y = g.dy; y <= g.dy + g.dh; y += 1) {
+                    const rel = (y - g.cy);
+                    const pathDiff = g.dPx * rel / Math.sqrt(g.D * g.D + rel * rel);
+                    const inten = Math.pow(Math.cos(Math.PI * pathDiff / g.lambdaPx), 2);
+                    if (inten < 0.02) continue;
+                    ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.12 + 0.8 * inten).toFixed(3)})`;
+                    ctx.fillRect(g.rightX, y, stripW, 1.2);
+                }
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(150, 168, 205, 0.75)';
+                ctx.save();
+                ctx.translate(g.rightX + stripW / 2, g.dy + 6);
+                ctx.fillText('screen', 0, 0);
+                ctx.restore();
+            }
+            ctx.restore();
+
+            // ---- separation dimension ----
+            if (g.slits.length > 1) {
+                const x = g.barrierX - bw - 34;
+                const y1 = g.slits[0], y2 = g.slits[g.slits.length - 1];
+                ctx.save();
+                ctx.strokeStyle = 'rgba(200, 214, 245, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y2);
+                ctx.moveTo(x - 5, y1);
+                ctx.lineTo(x + 5, y1);
+                ctx.moveTo(x - 5, y2);
+                ctx.lineTo(x + 5, y2);
+                ctx.stroke();
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.font = '10px system-ui';
+                ctx.fillStyle = 'rgba(220, 232, 255, 0.92)';
+                ctx.fillText(`d = ${getSlitSeparationMm().toFixed(2)} mm`, x - 8, (y1 + y2) / 2);
+                ctx.restore();
+            }
+
+            // ---- probe: path difference at a point ----
+            drawCloseupProbe(g, col);
+            ctx.restore();
+        }
+
+        function buildCloseupField(g, col) {
+            const cell = 3;
+            const rw = g.rightX - g.barrierX;
+            const fw = Math.max(1, Math.ceil(rw / cell));
+            const fh = Math.max(1, Math.ceil(g.dh / cell));
+            let cv = closeupField.canvas;
+            if (!cv || cv.width !== fw || cv.height !== fh) {
+                cv = document.createElement('canvas');
+                cv.width = fw;
+                cv.height = fh;
+                closeupField.canvas = cv;
+            }
+            const sctx = cv.getContext('2d');
+            const img = sctx.createImageData(fw, fh);
+            const data = img.data;
+            const k = 2 * Math.PI / g.lambdaPx;
+            const spread = g.lambdaPx * 45;
+            const invN2 = 1 / (g.slits.length * g.slits.length);
+
+            for (let j = 0; j < fh; j++) {
+                const py = g.dy + (j + 0.5) * cell;
+                const edgeFade = clamp(Math.min(j * cell, g.dh - j * cell) / 14, 0, 1);
+                for (let i = 0; i < fw; i++) {
+                    const px = g.barrierX + (i + 0.5) * cell;
+                    let re = 0, im = 0;
+                    for (let s = 0; s < g.slits.length; s++) {
+                        const dx = px - g.barrierX;
+                        const dy = py - g.slits[s];
+                        const r = Math.sqrt(dx * dx + dy * dy);
+                        const amp = 1 / Math.sqrt(1 + r / spread);
+                        re += amp * Math.cos(k * r);
+                        im += amp * Math.sin(k * r);
+                    }
+                    const value = (re * re + im * im) * invN2;
+                    const alpha = Math.min(1, value) ** 1.8 * 0.72 * edgeFade;
+                    const idx = (j * fw + i) * 4;
+                    data[idx] = col.r;
+                    data[idx + 1] = col.g;
+                    data[idx + 2] = col.b;
+                    data[idx + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+                }
+            }
+            sctx.putImageData(img, 0, 0);
+        }
+
+        function drawCloseupProbe(g, col) {
+            if (!closeupProbe) {
+                // Park the probe on the first order maximum so the readout shows
+                // something meaningful before the user touches anything.
+                const ratio = clamp(g.lambdaPx / g.dPx, -0.98, 0.98);
+                closeupProbe = {
+                    x: g.rightX - 30,
+                    y: g.cy + g.D * Math.tan(Math.asin(ratio))
+                };
+            }
+            const p = {
+                x: clamp(closeupProbe.x, g.barrierX + 6, g.rightX - 4),
+                y: clamp(closeupProbe.y, g.dy + 4, g.dy + g.dh - 4)
+            };
+
+            ctx.save();
+            ctx.setLineDash([3, 4]);
+            ctx.lineWidth = 1;
+            for (let i = 0; i < g.slits.length; i++) {
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.5)`;
+                ctx.beginPath();
+                ctx.moveTo(g.barrierX, g.slits[i]);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+            ctx.moveTo(p.x - 9, p.y);
+            ctx.lineTo(p.x - 2, p.y);
+            ctx.moveTo(p.x + 2, p.y);
+            ctx.lineTo(p.x + 9, p.y);
+            ctx.stroke();
+
+            let line1 = 'path difference', line2 = '';
+            if (g.slits.length > 1) {
+                const r1 = Math.hypot(p.x - g.barrierX, p.y - g.slits[0]);
+                const r2 = Math.hypot(p.x - g.barrierX, p.y - g.slits[g.slits.length - 1]);
+                const delta = Math.abs(r2 - r1) / g.lambdaPx;
+                const nearest = Math.round(delta);
+                const bright = Math.abs(delta - nearest) < 0.25;
+                line1 = `Δ = ${delta.toFixed(2)} λ  (${nearest} λ)`;
+                line2 = bright ? 'crests arrive together → bright fringe'
+                    : 'crest meets trough → dark fringe';
+            } else {
+                line1 = 'one slit only';
+                line2 = 'no interference — single broad lobe';
+            }
+
+            ctx.font = '10px system-ui';
+            const boxW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 16;
+            let bx = p.x + 14;
+            if (bx + boxW > g.dx + g.dw) bx = p.x - 14 - boxW;
+            const by = clamp(p.y - 26, g.dy + 2, g.dy + g.dh - 34);
+            ctx.fillStyle = 'rgba(8, 12, 24, 0.88)';
+            roundRectPath(ctx, bx, by, boxW, 32, 6);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(232, 244, 255, 0.95)';
+            ctx.fillText(line1, bx + 8, by + 10);
+            ctx.fillStyle = 'rgba(160, 178, 214, 0.9)';
+            ctx.fillText(line2, bx + 8, by + 23);
+            ctx.restore();
+        }
+
+        function drawCloseupFooter(r, g) {
+            const lambdaMm = getWavelengthMm();
+            const dMm = getSlitSeparationMm();
+            const LMm = getScreenDistanceMm();
+            const pxPerMm = g.dh / (2 * SCREEN_HALF_RANGE_MM);
+            const exaggeration = g.lambdaPx / Math.max(1e-9, lambdaMm * pxPerMm);
+            const fringeMm = params.numSlits > 1 ? (lambdaMm * LMm / dMm) : 0;
+            const realFringes = fringeMm > 0 ? Math.round(2 * SCREEN_HALF_RANGE_MM / fringeMm) : 0;
+
+            ctx.font = '10.5px system-ui';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'rgba(146, 162, 200, 0.85)';
+            ctx.fillText(
+                `Wavefronts are drawn ×${formatFactor(exaggeration)} too big: λ = ${lambdaMm.toFixed(5)} mm is ${Math.round(dMm / lambdaMm).toLocaleString()}× smaller than the ${dMm.toFixed(2)} mm slit gap, so it cannot be drawn to scale next to it.`,
+                r.x + 18, r.y + r.h - 34);
+            ctx.fillStyle = 'rgba(120, 136, 175, 0.8)';
+            ctx.fillText(params.numSlits > 1
+                ? `Real screen at L = ${(LMm / 1000).toFixed(2)} m: Δy = λL/d = ${fringeMm.toFixed(2)} mm → about ${realFringes} bright fringes across the visible screen. Click anywhere in the picture to measure a path difference.`
+                : `One slit: no fringes, just a single diffraction lobe about ${(2 * lambdaMm * LMm / getSlitWidthMm()).toFixed(2)} mm wide at the screen.`,
+                r.x + 18, r.y + r.h - 19);
+        }
+
+        function formatFactor(value) {
+            if (value >= 1e6) return (value / 1e6).toFixed(1) + ' million';
+            if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+            return Math.round(value).toLocaleString();
+        }
+
+        function closeupHit(x, y) {
+            if (!params.slitsPanel) return false;
+            const g = slitsPanelGeometry();
+            if (!g) return false;
+            return x >= g.dx - 6 && x <= g.rightX + 16 && y >= g.dy && y <= g.dy + g.dh;
         }
 
         // ==========================================
@@ -2470,8 +3471,11 @@
             // Smooth camera
             camera.rotX += (camera.targetRotX - camera.rotX) * 0.08;
             camera.rotY += (camera.targetRotY - camera.rotY) * 0.08;
+            camera.x += (camera.targetX - camera.x) * 0.08;
             camera.y += (camera.targetY - camera.y) * 0.08;
             camera.z += (camera.targetZ - camera.z) * 0.08;
+            camera.fov += (camera.targetFov - camera.fov) * 0.08;
+            camera.shiftY += (camera.targetShiftY - camera.shiftY) * 0.08;
             
             update();
             drawScene();
@@ -2490,12 +3494,28 @@
         
         // Mouse drag for camera rotation
         canvas.addEventListener('mousedown', (e) => {
+            if (closeupHit(e.clientX, e.clientY)) {
+                closeupProbe = { x: e.clientX, y: e.clientY };
+                closeupDrag = true;
+                return;
+            }
             isDragging = true;
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            if (closeupDrag) {
+                closeupProbe = { x: e.clientX, y: e.clientY };
+                return;
+            }
+            if (params.slitsPanel) {
+                canvas.style.cursor = isDragging
+                    ? 'grabbing'
+                    : (closeupHit(e.clientX, e.clientY) ? 'crosshair' : 'grab');
+            } else if (canvas.style.cursor !== '') {
+                canvas.style.cursor = '';
+            }
             if (!isDragging) return;
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
@@ -2506,20 +3526,29 @@
             lastMouseY = e.clientY;
         });
 
-        canvas.addEventListener('mouseup', () => isDragging = false);
-        canvas.addEventListener('mouseleave', () => isDragging = false);
+        canvas.addEventListener('mouseup', () => { isDragging = false; closeupDrag = false; });
+        canvas.addEventListener('mouseleave', () => { isDragging = false; closeupDrag = false; });
 
         // Touch support
         canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true;
-                lastMouseX = e.touches[0].clientX;
-                lastMouseY = e.touches[0].clientY;
+            if (e.touches.length !== 1) return;
+            if (closeupHit(e.touches[0].clientX, e.touches[0].clientY)) {
+                closeupProbe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                closeupDrag = true;
+                e.preventDefault();
+                return;
             }
+            isDragging = true;
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
         });
 
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            if (closeupDrag && e.touches.length === 1) {
+                closeupProbe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                return;
+            }
             if (!isDragging || e.touches.length !== 1) return;
             const dx = e.touches[0].clientX - lastMouseX;
             const dy = e.touches[0].clientY - lastMouseY;
@@ -2530,11 +3559,16 @@
             lastMouseY = e.touches[0].clientY;
         }, { passive: false });
 
-        canvas.addEventListener('touchend', () => isDragging = false);
+        canvas.addEventListener('touchend', () => { isDragging = false; closeupDrag = false; });
 
         // Scroll zoom
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
+            if (viewMode === 'slits') {
+                slitsZoom = clamp(slitsZoom * (1 - e.deltaY * 0.0015), 0.3, 3.5);
+                updateSlitsCamera();
+                return;
+            }
             camera.targetZ += e.deltaY * 0.5;
             camera.targetZ = Math.max(-400, Math.min(-80, camera.targetZ));
         }, { passive: false });
@@ -2550,12 +3584,14 @@
                 button.setAttribute('aria-label', `${expanded ? 'Expand' : 'Minimize'} ${panelName}`);
                 button.title = `${expanded ? 'Expand' : 'Minimize'} ${panelName}`;
                 button.textContent = expanded ? '+' : '−';
-                if (!expanded && panel.id === 'infoPanel') {
-                    requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updateLayout();
+                    if (viewMode === 'slits') updateSlitsCamera();
+                    if (!expanded && panel.id === 'infoPanel') {
                         resize();
                         drawIntensityGraph();
-                    });
-                }
+                    }
+                });
             });
         });
 
@@ -2594,6 +3630,7 @@
                 params[param] = param === 'speed' ? val / 10 : val;
                 display.textContent = format(val);
                 if (id === 'slitSeparation') updateSlitWidthLimit();
+                if (viewMode === 'slits') updateSlitsCamera();
                 if (resetOnChange) resetExperiment();
             });
         }
@@ -2627,6 +3664,15 @@
         setupToggle('trails', 'trails');
         setupToggle('predictedPattern', 'predictedPattern');
 
+        // The close-up panel re-frames the camera, so re-run the framing whenever
+        // it is switched on or off.
+        document.getElementById('slitsPanel').addEventListener('change', function () {
+            params.slitsPanel = this.checked;
+            closeupProbe = null;
+            updateLayout();
+            if (viewMode === 'slits') updateSlitsCamera();
+        });
+
         // Action buttons
         document.getElementById('resetBtn').addEventListener('click', resetExperiment);
 
@@ -2649,31 +3695,53 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+                viewMode = btn.dataset.view;
+
                 switch (btn.dataset.view) {
                     case 'perspective':
+                        camera.targetX = 0;
                         camera.targetRotX = -0.35;
                         camera.targetRotY = -0.4;
                         camera.targetY = 80;
                         camera.targetZ = -200;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
                         break;
                     case 'top':
+                        camera.targetX = 0;
                         camera.targetRotX = -1.15;
                         camera.targetRotY = 0;
                         camera.targetY = 250;
                         camera.targetZ = -50;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
                         break;
                     case 'side':
+                        camera.targetX = 0;
                         camera.targetRotX = 0;
                         camera.targetRotY = 0;
                         camera.targetY = 0;
                         camera.targetZ = -250;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
                         break;
                     case 'screen':
+                        camera.targetX = 0;
                         camera.targetRotX = -0.1;
                         camera.targetRotY = -1.5;
                         camera.targetY = 0;
                         camera.targetZ = -100;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
+                        break;
+                    case 'slits':
+                        // Park the camera on the barrier and show the schematic.
+                        slitsZoom = 1;
+                        params.slitsPanel = true;
+                        document.getElementById('slitsPanel').checked = true;
+                        closeupProbe = null;
+                        updateLayout();
+                        updateSlitsCamera();
                         break;
                 }
             });
