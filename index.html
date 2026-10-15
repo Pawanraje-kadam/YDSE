@@ -386,6 +386,28 @@
             color: #9fdcf5;
         }
 
+        .slits-view-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .closeup-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7em;
+            color: #9fdcf5;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .closeup-option input {
+            cursor: pointer;
+        }
+
         .view-btn:hover, .view-btn.active {
             border-color: rgba(0, 212, 255, 0.3);
             color: #00d4ff;
@@ -974,9 +996,9 @@
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Slit Separation</span>
-                    <span class="value" id="slitSepVal">0.5 mm</span>
+                    <span class="value" id="slitSepVal">0.38 mm</span>
                 </div>
-                <input type="range" id="slitSeparation" min="5" max="100" value="50">
+                <input type="range" id="slitSeparation" min="5" max="100" value="38">
             </div>
             <div class="slider-group">
                 <div class="slider-label">
@@ -1117,7 +1139,10 @@
     <!-- Bottom View Controls -->
     <div class="bottom-bar">
         <button class="view-btn active" data-view="perspective">3D Perspective</button>
-        <button class="view-btn view-btn-slits" data-view="slits">🔍 Slits View</button>
+        <div class="slits-view-wrap">
+            <label class="closeup-option"><input type="checkbox" id="closeupSlitView"> Close up slit view</label>
+            <button class="view-btn view-btn-slits" data-view="slits">🔍 Slits View</button>
+        </div>
         <button class="view-btn" data-view="top">Top View</button>
         <button class="view-btn" data-view="side">Side View</button>
         <button class="view-btn" data-view="screen">Screen View</button>
@@ -1167,7 +1192,7 @@
             emissionRate: 50,
             coherence: 100,
             slitWidth: 10,
-            slitSeparation: 50,
+            slitSeparation: 38,
             screenDistance: 60,
             numSlits: 2,
             detector: false,
@@ -1179,6 +1204,7 @@
             glowEffects: true,
             trails: true,
             slitsPanel: false,
+            slitsPanelFullscreen: false,
             speed: 1.0
         };
 
@@ -1353,10 +1379,13 @@
             return params.screenDistance * 3 + 50;
         }
 
+        // Shift the slit pair so it sits where the marked (red-dot) positions are.
+        const SLITS_CENTER_OFFSET = 2.2076;
         function getSlitPositionsScene() {
             const spacing = getSlitSeparationMm() * SCENE_UNITS_PER_MM;
+            const offset = params.numSlits > 1 ? SLITS_CENTER_OFFSET : 0;
             return Array.from({ length: params.numSlits }, (_, i) =>
-                (i - (params.numSlits - 1) / 2) * spacing
+                offset + (i - (params.numSlits - 1) / 2) * spacing
             );
         }
 
@@ -1382,8 +1411,9 @@
         }
 
         function intensityAtSceneY(yScene) {
+            const offset = params.numSlits > 1 ? SLITS_CENTER_OFFSET : 0;
             return calculateIntensity(
-                yScene / SCENE_UNITS_PER_MM,
+                (yScene - offset) / SCENE_UNITS_PER_MM,
                 getWavelengthMm(),
                 getSlitSeparationMm(),
                 getSlitWidthMm(),
@@ -2330,6 +2360,11 @@
                 const h = clamp(H * 0.40, 190, 320);
                 panelRect = { x: 20, y: docked ? 66 : top, w: Math.max(200, W - 40), h: h };
             }
+
+            // Full-screen close-up: let the schematic panel cover the whole canvas.
+            if (params.slitsPanel && params.slitsPanelFullscreen) {
+                panelRect = { x: 20, y: 70, w: Math.max(200, W - 40), h: Math.max(200, H - 90) };
+            }
         }
 
         // Vertical band of the canvas left over for the 3D close-up once the
@@ -2337,6 +2372,7 @@
         function slitsSceneBounds() {
             const bottom = panelDocked ? Math.min(H - 60, controlTop - 12) : H - 60;
             if (!params.slitsPanel) return { top: 70, bottom: bottom };
+            if (params.slitsPanelFullscreen) return { top: 70, bottom: bottom };
             const r = panelRect;
             return panelOnTop
                 ? { top: r.y + r.h + 18, bottom: bottom }
@@ -3668,10 +3704,28 @@
         // it is switched on or off.
         document.getElementById('slitsPanel').addEventListener('change', function () {
             params.slitsPanel = this.checked;
+            if (!this.checked) params.slitsPanelFullscreen = false;
+            const cb = document.getElementById('closeupSlitView');
+            if (cb) cb.checked = params.slitsPanelFullscreen;
             closeupProbe = null;
             updateLayout();
             if (viewMode === 'slits') updateSlitsCamera();
         });
+
+        // "Close up slit view" option above the Slits View button: shows the
+        // schematic close-up full-screen when enabled.
+        const closeupSlitViewCb = document.getElementById('closeupSlitView');
+        if (closeupSlitViewCb) {
+            closeupSlitViewCb.addEventListener('change', function () {
+                params.slitsPanelFullscreen = this.checked;
+                params.slitsPanel = this.checked || document.getElementById('slitsPanel').checked;
+                const panelCb = document.getElementById('slitsPanel');
+                if (panelCb) panelCb.checked = params.slitsPanel;
+                closeupProbe = null;
+                updateLayout();
+                if (viewMode === 'slits') updateSlitsCamera();
+            });
+        }
 
         // Action buttons
         document.getElementById('resetBtn').addEventListener('click', resetExperiment);
@@ -3735,10 +3789,9 @@
                         camera.targetShiftY = 0;
                         break;
                     case 'slits':
-                        // Park the camera on the barrier and show the schematic.
+                        // Park the camera on the barrier. The close-up panel is
+                        // controlled separately by the "Close up slit view" option.
                         slitsZoom = 1;
-                        params.slitsPanel = true;
-                        document.getElementById('slitsPanel').checked = true;
                         closeupProbe = null;
                         updateLayout();
                         updateSlitsCamera();
