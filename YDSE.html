@@ -386,32 +386,38 @@
             color: #9fdcf5;
         }
 
-        .slits-view-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .closeup-option {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.7em;
-            color: #9fdcf5;
-            cursor: pointer;
-            user-select: none;
-            white-space: nowrap;
-        }
-
-        .closeup-option input {
-            cursor: pointer;
-        }
-
         .view-btn:hover, .view-btn.active {
             border-color: rgba(0, 212, 255, 0.3);
             color: #00d4ff;
             background: rgba(0, 212, 255, 0.08);
+        }
+
+        /* Full-screen slit close-up: everything except its own toggle button is
+           hidden while the close-up is open. The close-up itself is painted on
+           the 3D canvas, so only the DOM chrome needs to step aside. */
+        .view-btn-slits {
+            position: relative;
+        }
+
+        body.slit-closeup-open .header,
+        body.slit-closeup-open .control-panel,
+        body.slit-closeup-open .info-panel {
+            display: none !important;
+        }
+
+        body.slit-closeup-open .bottom-bar {
+            gap: 0;
+        }
+
+        body.slit-closeup-open .bottom-bar .view-btn:not(.view-btn-slits) {
+            display: none;
+        }
+
+        body.slit-closeup-open .view-btn-slits {
+            z-index: 40;
+            border-color: rgba(0, 212, 255, 0.55);
+            color: #00d4ff;
+            background: rgba(4, 8, 16, 0.92);
         }
 
         /* Loading Screen */
@@ -574,6 +580,11 @@
 
         .info-panel {
             width: 340px;
+            /* Cap the height so the results inside .panel-content can scroll
+               instead of running off the bottom of the screen. */
+            bottom: 20px;
+            height: auto;
+            max-height: calc(100vh - 100px);
         }
 
         .panel-heading {
@@ -906,7 +917,31 @@
 
             .intensity-graph canvas { height: 140px; }
             .panel-heading { margin-bottom: 6px; }
-            .bottom-bar { display: none; }
+
+            /* Keep the view buttons reachable on small screens: they sit just
+               above the docked control panel and wrap onto two rows if needed. */
+            .bottom-bar {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 6px;
+                left: 10px;
+                right: 10px;
+                bottom: calc(41vh + 30px);
+                transform: none;
+                width: auto;
+                max-width: none;
+            }
+
+            .view-btn {
+                padding: 8px 13px;
+                font-size: 0.68em;
+                letter-spacing: 0.4px;
+            }
+
+            body.slit-closeup-open .bottom-bar {
+                bottom: 14px;
+            }
         }
 
     </style>
@@ -996,14 +1031,14 @@
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Slit Separation</span>
-                    <span class="value" id="slitSepVal">0.38 mm</span>
+                    <span class="value" id="slitSeparationVal">0.38 mm</span>
                 </div>
                 <input type="range" id="slitSeparation" min="5" max="100" value="38">
             </div>
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Screen Distance</span>
-                    <span class="value" id="screenDistVal">1.00 m</span>
+                    <span class="value" id="screenDistanceVal">1.00 m</span>
                 </div>
                 <input type="range" id="screenDistance" min="20" max="100" value="60">
             </div>
@@ -1041,14 +1076,6 @@
                 </label>
             </div>
             <p class="slit-hint">The screen stays dark until particles land. Fringes develop only from real impacts, over about 5 seconds. Switch this on to ghost the textbook prediction on top for comparison.</p>
-            <div class="toggle-row">
-                <span class="label">Slit Close-up</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="slitsPanel">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <p class="slit-hint">Drops a schematic close-up of the slit plane under the scene: wavelets leaving each slit, the bright fans they build, and a path difference you can click to measure. Wavefronts are enlarged so they are visible next to the slit gap.</p>
             <div class="slider-group">
                 <div class="slider-label">
                     <span class="name">Animation Speed</span>
@@ -1113,7 +1140,7 @@
 
             <div class="teaching-note">
                 <span aria-hidden="true">🔍</span>
-                <span><strong>Slits View</strong> zooms onto the barrier and opens a close-up of the slits, where you can watch the wavelets from each slit overlap and click to measure a path difference.</span>
+                <span><strong>Slits View</strong> opens a full-screen close-up of the slit plane: watch the wavelets from each slit overlap, and click anywhere in the picture to measure a path difference. Click the button again to come back.</span>
             </div>
 
             <div class="equation-box" id="equationBox">
@@ -1139,10 +1166,8 @@
     <!-- Bottom View Controls -->
     <div class="bottom-bar">
         <button class="view-btn active" data-view="perspective">3D Perspective</button>
-        <div class="slits-view-wrap">
-            <label class="closeup-option"><input type="checkbox" id="closeupSlitView"> Close up slit view</label>
-            <button class="view-btn view-btn-slits" data-view="slits">🔍 Slits View</button>
-        </div>
+        <button class="view-btn view-btn-slits" id="slitsViewBtn" type="button"
+                aria-pressed="false" title="Open the full-screen slit close-up">🔍 Slits View</button>
         <button class="view-btn" data-view="top">Top View</button>
         <button class="view-btn" data-view="side">Side View</button>
         <button class="view-btn" data-view="screen">Screen View</button>
@@ -1203,8 +1228,7 @@
             delayedChoice: false,
             glowEffects: true,
             trails: true,
-            slitsPanel: false,
-            slitsPanelFullscreen: false,
+            slitCloseupOpen: false,   // full-screen slit close-up, toggled by the Slits View button
             speed: 1.0
         };
 
@@ -1224,7 +1248,6 @@
         let viewMode = 'perspective';
         let slitsZoom = 1;
         let panelRect = { x: 24, y: 0, w: 320, h: 200 };
-        let panelOnTop = false;
         let panelDocked = false;     // control panel docked to the bottom of the screen
         let controlTop = 0;
         let closeupProbe = null;        // {x, y} in canvas pixels, inside the diagram
@@ -1600,7 +1623,6 @@
             if (viewMode === 'slits') {
                 drawSlitsScene();
                 if (params.glowEffects) drawGlow();
-                if (params.slitsPanel) drawSlitsPanel();
                 return;
             }
 
@@ -1644,10 +1666,8 @@
                 drawGlow();
             }
 
-            // Optional schematic close-up, available in every view
-            if (params.slitsPanel) {
-                drawSlitsPanel();
-            }
+            // The slit close-up is no longer docked into the scene: it only ever
+            // appears full-screen, drawn from the game loop while it is open.
         }
 
         function drawGrid() {
@@ -2321,62 +2341,39 @@
         //      barrier as a solid slab with the apertures cut out of it, with the
         //      Huygens wavelets leaving every slit and the static interference
         //      field those wavelets build (the bright fans / dark nodal lines).
-        //   2. It draws a schematic "slit close-up" panel underneath that spells
-        //      out the mechanism: crests leaving both slits, where they arrive
-        //      together (bright fringe) and where they arrive opposite (dark).
+        //   2. The "Slits View" button opens a schematic slit close-up that takes
+        //      over the whole screen and spells out the mechanism: crests leaving
+        //      both slits, where they arrive together (bright fringe) and where
+        //      they arrive opposite (dark). Clicking the button again closes it
+        //      and returns to the main scene. Nothing else is drawn or clickable
+        //      while it is open, apart from that one button.
         //
         // The wavelength is ~1000x smaller than the slit separation, so it cannot
         // be drawn to scale next to it. Both pictures therefore use an enlarged
         // wavelength, and the factor is always reported on screen.
 
         // ---- Layout -----------------------------------------------------------
-        // The close-up panel is docked into whatever space the two side panels and
-        // the bottom bar leave free, so the 3D slit close-up keeps the rest.
+        // The slit close-up always covers the whole canvas, so this only has to
+        // work out where it sits (everywhere) and keep the 3D slit camera framed.
         function updateLayout() {
             const cpEl = document.getElementById('controlPanel');
-            const ipEl = document.getElementById('infoPanel');
-            const bbEl = document.querySelector('.bottom-bar');
             const cp = cpEl ? cpEl.getBoundingClientRect() : null;
-            const ip = (ipEl && getComputedStyle(ipEl).display !== 'none')
-                ? ipEl.getBoundingClientRect() : null;
-            const bb = (bbEl && getComputedStyle(bbEl).display !== 'none')
-                ? bbEl.getBoundingClientRect() : null;
 
             const docked = !!cp && cp.top > H * 0.5;   // control panel docked to the bottom
             panelDocked = docked;
             controlTop = cp ? cp.top : H;
-            const left = (!cp || docked) ? 20 : Math.max(20, cp.right + 20);
-            const right = (ip && !docked ? ip.left : W) - 20;
-            const bottom = (bb ? bb.top : H - 10) - 14;
-            const top = 76;
 
-            if (!docked && right - left >= 430) {
-                panelOnTop = false;
-                const h = clamp((bottom - top) * 0.54, 250, 460);
-                const w = Math.min(right - left, 1180);
-                panelRect = { x: left + (right - left - w) / 2, y: bottom - h, w: w, h: h };
-            } else {
-                panelOnTop = true;
-                const h = clamp(H * 0.40, 190, 320);
-                panelRect = { x: 20, y: docked ? 66 : top, w: Math.max(200, W - 40), h: h };
-            }
-
-            // Full-screen close-up: let the schematic panel cover the whole canvas.
-            if (params.slitsPanel && params.slitsPanelFullscreen) {
-                panelRect = { x: 20, y: 70, w: Math.max(200, W - 40), h: Math.max(200, H - 90) };
-            }
+            // The slit close-up covers the entire canvas: no margin is left for
+            // the side panels or the bottom bar, because all of them (except the
+            // close-up's own toggle button) are hidden while it is open.
+            panelRect = { x: 0, y: 0, w: W, h: H };
         }
 
-        // Vertical band of the canvas left over for the 3D close-up once the
-        // schematic panel has taken its share.
+        // Vertical band of the canvas available to the 3D slit view. The
+        // full-screen close-up leaves the whole canvas free.
         function slitsSceneBounds() {
             const bottom = panelDocked ? Math.min(H - 60, controlTop - 12) : H - 60;
-            if (!params.slitsPanel) return { top: 70, bottom: bottom };
-            if (params.slitsPanelFullscreen) return { top: 70, bottom: bottom };
-            const r = panelRect;
-            return panelOnTop
-                ? { top: r.y + r.h + 18, bottom: bottom }
-                : { top: 86, bottom: r.y - 14 };
+            return { top: 70, bottom: bottom };
         }
 
         function slitsVisibleHeight() {
@@ -2856,18 +2853,25 @@
         // "HOW IT HAPPENS" CLOSE-UP PANEL
         // ==========================================
 
-        function slitsPanelGeometry() {
+        // Geometry of the full-screen slit close-up. Everything scales off the
+        // canvas size so the close-up also works on phones, where it used to be
+        // skipped for being too small.
+        function closeupGeometry() {
             const r = panelRect;
-            const headerH = 34, footerH = 44, padX = 18;
+            const compact = r.w < 620;
+            const headerH = compact ? 28 : 34;
+            const footerH = compact ? 54 : 44;   // extra room for wrapped footnotes
+            const padX = compact ? 10 : 18;
             const dh = r.h - headerH - footerH;
-            if (r.w < 260 || dh < 110) return null;
+            if (r.w < 190 || dh < 70) return null;
 
             const dx = r.x + padX;
             const dy = r.y + headerH;
             const dw = r.w - padX * 2;
             const cy = dy + dh / 2;
-            const barrierX = dx + Math.min(170, dw * 0.20);
-            const rightX = dx + dw - 16;
+            // Keep room on the left for the "d = ..." dimension label.
+            const barrierX = dx + clamp(dw * 0.22, compact ? 46 : 74, 190);
+            const rightX = dx + dw - (compact ? 10 : 16);
             const D = rightX - barrierX;
             const n = Math.max(1, params.numSlits);
             const dMm = getSlitSeparationMm();
@@ -2885,16 +2889,25 @@
                 dx: dx, dy: dy, dw: dw, dh: dh, cy: cy,
                 barrierX: barrierX, rightX: rightX, D: D,
                 dPx: dPx, aPx: aPx, lambdaPx: lambdaPx, slits: slits,
-                wallHalf: clamp(dw * 0.012, 6, 13)
+                wallHalf: clamp(dw * 0.012, 6, 13),
+                compact: compact,
+                headerH: headerH, footerH: footerH, padX: padX,
+                titleFont: compact ? 10.5 : 12,
+                noteFont: compact ? 8.6 : 10,
+                footerFont: compact ? 8.4 : 10.5
             };
         }
 
         const closeupField = { key: '', canvas: null };
 
-        function drawSlitsPanel() {
+        // Paint the slit close-up over the whole canvas. It is only ever called
+        // while params.slitCloseupOpen is true, and the toggle button (a DOM
+        // element floating above the canvas) is the only way back out.
+        function drawSlitCloseup() {
             const r = panelRect;
-            if (r.w < 260 || r.h < 170) return;
-            const g = slitsPanelGeometry();
+            ctx.fillStyle = '#070912';
+            ctx.fillRect(0, 0, W, H);
+            const g = closeupGeometry();
             if (!g) return;
 
             ctx.save();
@@ -2908,16 +2921,24 @@
 
             // ---- header ----
             const col = slitsWaveColor();
+            const hy = r.y + g.headerH / 2;
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'left';
-            ctx.font = '600 12px system-ui';
+            ctx.font = `600 ${g.titleFont}px system-ui`;
             ctx.fillStyle = 'rgba(190, 232, 255, 0.95)';
-            ctx.fillText('SLIT CLOSE-UP  ·  how the two slits build the fringes', r.x + 18, r.y + 18);
+            ctx.fillText('SLIT CLOSE-UP  ·  how the slits build the fringes', r.x + g.padX, hy);
 
-            ctx.font = '10px system-ui';
+            ctx.font = `${g.noteFont}px system-ui`;
             ctx.textAlign = 'right';
-            ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
-            ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - 18, r.y + 18);
+            if (r.w >= 900) {
+                ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
+                ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - g.padX, hy);
+            } else if (!g.compact) {
+                // Too narrow for both strings: the title wins, the button below
+                // already says how to close this view.
+                ctx.fillStyle = 'rgba(126, 214, 245, 0.9)';
+                ctx.fillText('🔍 Slits View closes this', r.x + r.w - g.padX, hy);
+            }
 
             drawCloseupDiagram(g, col);
             drawCloseupFooter(r, g);
@@ -3070,16 +3091,23 @@
                 }
                 ctx.textAlign = 'center';
                 ctx.fillStyle = 'rgba(150, 168, 205, 0.75)';
-                ctx.save();
-                ctx.translate(g.rightX + stripW / 2, g.dy + 6);
-                ctx.fillText('screen', 0, 0);
-                ctx.restore();
+                if (!g.compact) {
+                    ctx.save();
+                    ctx.translate(g.rightX + stripW / 2, g.dy + 6);
+                    ctx.fillText('screen', 0, 0);
+                    ctx.restore();
+                }
             }
             ctx.restore();
 
             // ---- separation dimension ----
             if (g.slits.length > 1) {
-                const x = g.barrierX - bw - 34;
+                const dimFont = g.compact ? 8.6 : 10;
+                ctx.font = `${dimFont}px system-ui`;
+                const dimText = `d = ${getSlitSeparationMm().toFixed(2)} mm`;
+                const dimW = ctx.measureText(dimText).width;
+                // Slide the bracket right if the label would run off the edge.
+                const x = Math.max(g.dx + dimW + 12, g.barrierX - bw - (g.compact ? 16 : 34));
                 const y1 = g.slits[0], y2 = g.slits[g.slits.length - 1];
                 ctx.save();
                 ctx.strokeStyle = 'rgba(200, 214, 245, 0.6)';
@@ -3094,9 +3122,8 @@
                 ctx.stroke();
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                ctx.font = '10px system-ui';
                 ctx.fillStyle = 'rgba(220, 232, 255, 0.92)';
-                ctx.fillText(`d = ${getSlitSeparationMm().toFixed(2)} mm`, x - 8, (y1 + y2) / 2);
+                ctx.fillText(dimText, x - 8, (y1 + y2) / 2);
                 ctx.restore();
             }
 
@@ -3231,18 +3258,43 @@
             const fringeMm = params.numSlits > 1 ? (lambdaMm * LMm / dMm) : 0;
             const realFringes = fringeMm > 0 ? Math.round(2 * SCREEN_HALF_RANGE_MM / fringeMm) : 0;
 
-            ctx.font = '10.5px system-ui';
+            ctx.font = `${g.footerFont}px system-ui`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillStyle = 'rgba(146, 162, 200, 0.85)';
-            ctx.fillText(
-                `Wavefronts are drawn ×${formatFactor(exaggeration)} too big: λ = ${lambdaMm.toFixed(5)} mm is ${Math.round(dMm / lambdaMm).toLocaleString()}× smaller than the ${dMm.toFixed(2)} mm slit gap, so it cannot be drawn to scale next to it.`,
-                r.x + 18, r.y + r.h - 34);
-            ctx.fillStyle = 'rgba(120, 136, 175, 0.8)';
-            ctx.fillText(params.numSlits > 1
-                ? `Real screen at L = ${(LMm / 1000).toFixed(2)} m: Δy = λL/d = ${fringeMm.toFixed(2)} mm → about ${realFringes} bright fringes across the visible screen. Click anywhere in the picture to measure a path difference.`
-                : `One slit: no fringes, just a single diffraction lobe about ${(2 * lambdaMm * LMm / getSlitWidthMm()).toFixed(2)} mm wide at the screen.`,
-                r.x + 18, r.y + r.h - 19);
+            const line1 = `Wavefronts are drawn ×${formatFactor(exaggeration)} too big: λ = ${lambdaMm.toFixed(5)} mm is ${Math.round(dMm / lambdaMm).toLocaleString()}× smaller than the ${dMm.toFixed(2)} mm slit gap, so it cannot be drawn to scale next to it.`;
+            const line2 = params.numSlits > 1
+                ? `Click anywhere in the picture to measure a path difference. Real screen at L = ${(LMm / 1000).toFixed(2)} m: Δy = λL/d = ${fringeMm.toFixed(2)} mm → about ${realFringes} bright fringes across the visible screen.`
+                : `Click anywhere in the picture to measure. One slit: no fringes, just a single diffraction lobe about ${(2 * lambdaMm * LMm / getSlitWidthMm()).toFixed(2)} mm wide at the screen.`;
+
+            const lineH = g.compact ? 10.5 : 15;
+            const maxW = r.w - g.padX * 2;
+            let y = r.y + r.h - g.footerH + (g.compact ? 7 : 10);
+            const put = (text, color) => {
+                ctx.fillStyle = color;
+                if (!g.compact) {
+                    ctx.fillText(text, r.x + g.padX, y);
+                    y += lineH;
+                    return;
+                }
+                // Narrow screens: word-wrap inside the footer band.
+                let cur = '';
+                for (const word of text.split(' ')) {
+                    const test = cur ? cur + ' ' + word : word;
+                    if (cur && ctx.measureText(test).width > maxW) {
+                        ctx.fillText(cur, r.x + g.padX, y);
+                        y += lineH;
+                        cur = word;
+                    } else {
+                        cur = test;
+                    }
+                }
+                if (cur && y < r.y + r.h - 8) {
+                    ctx.fillText(cur, r.x + g.padX, y);
+                    y += lineH;
+                }
+            };
+            put(line1, 'rgba(146, 162, 200, 0.85)');
+            put(line2, 'rgba(120, 136, 175, 0.8)');
         }
 
         function formatFactor(value) {
@@ -3252,8 +3304,8 @@
         }
 
         function closeupHit(x, y) {
-            if (!params.slitsPanel) return false;
-            const g = slitsPanelGeometry();
+            if (!params.slitCloseupOpen) return false;
+            const g = closeupGeometry();
             if (!g) return false;
             return x >= g.dx - 6 && x <= g.rightX + 16 && y >= g.dy && y <= g.dy + g.dh;
         }
@@ -3514,7 +3566,14 @@
             camera.shiftY += (camera.targetShiftY - camera.shiftY) * 0.08;
             
             update();
-            drawScene();
+
+            // The slit close-up takes over the whole canvas while it is open:
+            // no scene, no panels, just the schematic and its toggle button.
+            if (params.slitCloseupOpen) {
+                drawSlitCloseup();
+            } else {
+                drawScene();
+            }
             
             if (frameCount % 5 === 0) {
                 drawIntensityGraph();
@@ -3545,7 +3604,7 @@
                 closeupProbe = { x: e.clientX, y: e.clientY };
                 return;
             }
-            if (params.slitsPanel) {
+            if (params.slitCloseupOpen) {
                 canvas.style.cursor = isDragging
                     ? 'grabbing'
                     : (closeupHit(e.clientX, e.clientY) ? 'crosshair' : 'grab');
@@ -3664,7 +3723,9 @@
             slider.addEventListener('input', () => {
                 const val = parseFloat(slider.value);
                 params[param] = param === 'speed' ? val / 10 : val;
-                display.textContent = format(val);
+                // A missing readout must never abort the rest of the handler:
+                // the physics reset below has to run for every slider.
+                if (display) display.textContent = format(val);
                 if (id === 'slitSeparation') updateSlitWidthLimit();
                 if (viewMode === 'slits') updateSlitsCamera();
                 if (resetOnChange) resetExperiment();
@@ -3700,32 +3761,44 @@
         setupToggle('trails', 'trails');
         setupToggle('predictedPattern', 'predictedPattern');
 
-        // The close-up panel re-frames the camera, so re-run the framing whenever
-        // it is switched on or off.
-        document.getElementById('slitsPanel').addEventListener('change', function () {
-            params.slitsPanel = this.checked;
-            if (!this.checked) params.slitsPanelFullscreen = false;
-            const cb = document.getElementById('closeupSlitView');
-            if (cb) cb.checked = params.slitsPanelFullscreen;
-            closeupProbe = null;
-            updateLayout();
-            if (viewMode === 'slits') updateSlitsCamera();
-        });
+        // ---- Full-screen slit close-up --------------------------------------
+        // The "Slits View" button is the only control: one click opens the
+        // close-up over the whole screen (every other panel, the header and the
+        // other view buttons are hidden), clicking it again closes the close-up
+        // and brings the main screen back exactly as it was.
+        const slitsViewBtn = document.getElementById('slitsViewBtn');
 
-        // "Close up slit view" option above the Slits View button: shows the
-        // schematic close-up full-screen when enabled.
-        const closeupSlitViewCb = document.getElementById('closeupSlitView');
-        if (closeupSlitViewCb) {
-            closeupSlitViewCb.addEventListener('change', function () {
-                params.slitsPanelFullscreen = this.checked;
-                params.slitsPanel = this.checked || document.getElementById('slitsPanel').checked;
-                const panelCb = document.getElementById('slitsPanel');
-                if (panelCb) panelCb.checked = params.slitsPanel;
-                closeupProbe = null;
+        function setSlitCloseup(open) {
+            params.slitCloseupOpen = open;
+            closeupProbe = null;
+            closeupDrag = false;
+
+            slitsViewBtn.classList.toggle('active', open);
+            slitsViewBtn.setAttribute('aria-pressed', String(open));
+            slitsViewBtn.textContent = open ? '✕ Close Slit View' : '🔍 Slits View';
+            slitsViewBtn.title = open
+                ? 'Close the slit close-up and go back to the experiment'
+                : 'Open the full-screen slit close-up';
+            document.body.classList.toggle('slit-closeup-open', open);
+
+            if (!open) canvas.style.cursor = '';
+            // The panels are hidden/shown by the body class, so measure the new
+            // layout straight away (reading a bounding rect flushes the style
+            // change) and again on the next frame once the DOM has settled.
+            updateLayout();
+            requestAnimationFrame(() => {
                 updateLayout();
                 if (viewMode === 'slits') updateSlitsCamera();
+                if (!open) resize();
             });
         }
+
+        slitsViewBtn.addEventListener('click', () => setSlitCloseup(!params.slitCloseupOpen));
+
+        // Escape is a shortcut for the same button, nothing else closes it.
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && params.slitCloseupOpen) setSlitCloseup(false);
+        });
 
         // Action buttons
         document.getElementById('resetBtn').addEventListener('click', resetExperiment);
@@ -3744,10 +3817,14 @@
             this.textContent = paused ? '▶ Resume' : '⏸ Pause';
         });
 
-        // View buttons
-        document.querySelectorAll('.view-btn').forEach(btn => {
+        // View buttons (the slits button is wired separately: it toggles the
+        // full-screen close-up instead of moving the camera).
+        document.querySelectorAll('.view-btn[data-view]').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                // Leaving for another view always drops the close-up first.
+                if (params.slitCloseupOpen) setSlitCloseup(false);
+
+                document.querySelectorAll('.view-btn[data-view]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 viewMode = btn.dataset.view;
 
@@ -3787,14 +3864,6 @@
                         camera.targetZ = -100;
                         camera.targetFov = 600;
                         camera.targetShiftY = 0;
-                        break;
-                    case 'slits':
-                        // Park the camera on the barrier. The close-up panel is
-                        // controlled separately by the "Close up slit view" option.
-                        slitsZoom = 1;
-                        closeupProbe = null;
-                        updateLayout();
-                        updateSlitsCamera();
                         break;
                 }
             });
