@@ -1,0 +1,3768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Young's Double Slit Experiment - 3D Quantum Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #canvas3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-overlay > * {
+            pointer-events: auto;
+        }
+
+        /* Top Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            background: linear-gradient(180deg, rgba(10,10,20,0.95) 0%, rgba(10,10,20,0.7) 80%, transparent 100%);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 1.4em;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #00d4ff, #7b2ffc, #ff006e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 0.7em;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 2px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            left: 20px;
+            top: 80px;
+            bottom: 20px;
+            width: 320px;
+            z-index: 15;
+            background: rgba(12, 12, 25, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(100, 100, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .section {
+            margin-bottom: 22px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #00d4ff;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title .icon {
+            font-size: 1.2em;
+        }
+
+        /* Particle Type Selector */
+        .particle-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .particle-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px 8px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.78em;
+        }
+
+        .particle-btn:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .particle-btn.active {
+            border-color: var(--accent-color, #00d4ff);
+            color: #fff;
+            background: rgba(0, 212, 255, 0.08);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .particle-btn .emoji {
+            font-size: 1.6em;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 14px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.78em;
+        }
+
+        .slider-label .name {
+            color: #aaa;
+        }
+
+        .slider-label .value {
+            color: #00d4ff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Toggle Switches */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 6px 0;
+        }
+
+        .toggle-row .label {
+            font-size: 0.78em;
+            color: #aaa;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 42px;
+            height: 22px;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            display: none;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.08);
+            border-radius: 11px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 16px;
+            height: 16px;
+            background: #666;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: rgba(0, 212, 255, 0.3);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+            background: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            background: rgba(0, 212, 255, 0.05);
+            color: #00d4ff;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85em;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 212, 255, 0.12);
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+        }
+
+        .action-btn.danger {
+            border-color: rgba(255, 0, 110, 0.2);
+            background: rgba(255, 0, 110, 0.05);
+            color: #ff006e;
+        }
+
+        .action-btn.danger:hover {
+            background: rgba(255, 0, 110, 0.12);
+            border-color: rgba(255, 0, 110, 0.4);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            width: 300px;
+            z-index: 15;
+            background: rgba(12, 12, 25, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(100, 100, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 0.8em;
+        }
+
+        .stat-row .stat-name {
+            color: #777;
+        }
+
+        .stat-row .stat-val {
+            color: #00d4ff;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Physics Description */
+        .physics-desc {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 212, 255, 0.03);
+            border-radius: 8px;
+            border-left: 2px solid rgba(0, 212, 255, 0.3);
+            font-size: 0.72em;
+            line-height: 1.6;
+            color: #888;
+        }
+
+        .physics-desc .highlight {
+            color: #00d4ff;
+        }
+
+        /* Bottom Bar */
+        .bottom-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-btn {
+            padding: 10px 20px;
+            background: rgba(12, 12, 25, 0.9);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #888;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.78em;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .view-btn-slits {
+            border-color: rgba(0, 212, 255, 0.28);
+            color: #9fdcf5;
+        }
+
+        .view-btn:hover, .view-btn.active {
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-ring {
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(0, 212, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 0.8em;
+            letter-spacing: 3px;
+            color: #555;
+        }
+
+        /* Intensity graph overlay */
+        .intensity-graph {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 300px;
+            height: 200px;
+            z-index: 15;
+            background: rgba(12, 12, 25, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(100, 100, 255, 0.1);
+            border-radius: 16px;
+            padding: 15px;
+        }
+
+        .intensity-graph canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        /* Equation display */
+        .equation-box {
+            padding: 10px 14px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em;
+            color: #00d4ff;
+            text-align: center;
+            margin-top: 8px;
+            border: 1px solid rgba(0,212,255,0.08);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .control-panel {
+                width: 280px;
+            }
+            .info-panel {
+                width: 260px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .info-panel {
+                display: none;
+            }
+            .intensity-graph {
+                display: none;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .control-panel {
+                width: calc(100% - 40px);
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                border-radius: 16px 16px 0 0;
+                max-height: 50vh;
+                width: 100%;
+                margin: 0;
+            }
+            .bottom-bar {
+                display: none;
+            }
+        }
+
+        /* Particle count badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+            font-size: 0.7em;
+            color: #00d4ff;
+            margin-left: 6px;
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: #ccc;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.7em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Student-friendly panels and textbook-style plot */
+        .control-panel,
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            overflow: hidden;
+        }
+
+        .control-panel {
+            width: 320px;
+        }
+
+        .info-panel {
+            width: 340px;
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 38px;
+            flex: 0 0 auto;
+            margin-bottom: 10px;
+        }
+
+        .panel-heading-copy {
+            min-width: 0;
+        }
+
+        .panel-eyebrow {
+            display: block;
+            margin-bottom: 3px;
+            color: #78849e;
+            font-size: 0.59em;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            color: #f1f5ff;
+            font-size: 0.98em;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            line-height: 1.2;
+        }
+
+        .panel-heading h2 .icon {
+            margin-right: 5px;
+            color: #00d4ff;
+        }
+
+        .panel-collapse {
+            display: inline-grid;
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            place-items: center;
+            border: 1px solid rgba(150, 170, 220, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #e5f7ff;
+            cursor: pointer;
+            font-size: 1.25em;
+            line-height: 1;
+            transition: background 0.2s, border-color 0.2s, transform 0.2s;
+        }
+
+        .panel-collapse:hover {
+            transform: translateY(-1px);
+            border-color: rgba(0, 212, 255, 0.45);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .panel-collapse:focus-visible,
+        .action-btn:focus-visible,
+        .view-btn:focus-visible,
+        .particle-btn:focus-visible {
+            outline: 2px solid #00d4ff;
+            outline-offset: 2px;
+        }
+
+        .panel-content {
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #39415a transparent;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            border-radius: 5px;
+            background: #39415a;
+        }
+
+        .control-panel.collapsed,
+        .info-panel.collapsed {
+            bottom: auto;
+            height: auto;
+            max-height: none;
+            padding: 10px 12px;
+        }
+
+        .control-panel.collapsed {
+            width: 224px;
+        }
+
+        .info-panel.collapsed {
+            width: 250px;
+        }
+
+        .control-panel.collapsed .panel-heading,
+        .info-panel.collapsed .panel-heading {
+            margin-bottom: 0;
+        }
+
+        .control-panel.collapsed .panel-content,
+        .info-panel.collapsed .panel-content {
+            display: none;
+        }
+
+        .control-panel .section:last-child {
+            margin-bottom: 2px;
+            padding-bottom: 0;
+        }
+
+        .slit-hint {
+            margin: -5px 0 12px;
+            color: #73809b;
+            font-size: 0.68em;
+            line-height: 1.45;
+        }
+
+        .stat-row {
+            gap: 14px;
+            align-items: baseline;
+        }
+
+        .stat-row .stat-name {
+            color: #aab4cb;
+        }
+
+        .stat-row .stat-val {
+            color: #7ce7ff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .physics-desc {
+            margin-top: 12px;
+            color: #b9c4d8;
+            font-size: 0.74em;
+        }
+
+        .physics-desc .highlight {
+            color: #73e5ff;
+            font-weight: 600;
+        }
+
+        .teaching-note {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-top: 9px;
+            padding: 9px 10px;
+            border: 1px solid rgba(255, 194, 91, 0.16);
+            border-radius: 9px;
+            background: rgba(255, 194, 91, 0.05);
+            color: #d8c8a6;
+            font-size: 0.69em;
+            line-height: 1.45;
+        }
+
+        .teaching-note strong {
+            color: #ffd47e;
+        }
+
+        .equation-box {
+            margin-top: 10px;
+            padding: 10px 12px;
+            color: #bdefff;
+        }
+
+        .equation-box .equation-main {
+            display: block;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        .equation-box .equation-note {
+            display: block;
+            margin-top: 5px;
+            color: #8594ad;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 0.82em;
+            line-height: 1.35;
+        }
+
+        .intensity-graph {
+            position: static;
+            display: block;
+            width: 100%;
+            height: auto;
+            margin-top: 14px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: #f8fafc;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            backdrop-filter: none;
+        }
+
+        .graph-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 0 2px 7px;
+            color: #24324a;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+
+        .graph-heading .graph-tag {
+            color: #6b7890;
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+        }
+
+        .intensity-graph canvas {
+            display: block;
+            width: 100%;
+            height: 220px;
+            border: 1px solid #dce3ec;
+            border-radius: 7px;
+            background: #fff;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            color: #45536a;
+            font-size: 0.67em;
+        }
+
+        .chart-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-swatch {
+            display: inline-block;
+            width: 16px;
+            height: 3px;
+            border-radius: 2px;
+            background: #174f85;
+        }
+
+        .legend-swatch.observed {
+            height: 9px;
+            border-radius: 2px 2px 0 0;
+            background: rgba(225, 142, 43, 0.64);
+            border: 1px solid rgba(190, 105, 18, 0.7);
+        }
+
+        .graph-caption {
+            margin: 7px 2px 1px;
+            color: #59677d;
+            font-size: 0.67em;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 1200px) {
+            .control-panel { width: 280px; }
+            .info-panel { width: 320px; }
+        }
+
+        @media (max-width: 900px) {
+            .control-panel { width: 250px; }
+            .info-panel {
+                display: flex;
+                width: 300px;
+            }
+            .intensity-graph { display: block; }
+            .intensity-graph canvas { height: 190px; }
+        }
+
+        @media (max-width: 700px) {
+            .header {
+                padding: 10px 14px;
+            }
+
+            .header h1 {
+                max-width: 65vw;
+                font-size: 0.92em;
+                letter-spacing: 1px;
+            }
+
+            .header .subtitle { display: none; }
+
+            .control-panel {
+                top: auto;
+                right: 10px;
+                bottom: 10px;
+                left: 10px;
+                width: auto;
+                height: 41vh;
+                max-height: 390px;
+                border-radius: 15px;
+            }
+
+            .info-panel {
+                top: 62px;
+                right: 10px;
+                bottom: auto;
+                left: 10px;
+                width: auto;
+                height: 34vh;
+                max-height: 300px;
+                border-radius: 15px;
+            }
+
+            .control-panel.collapsed {
+                bottom: 10px;
+                width: auto;
+            }
+
+            .info-panel.collapsed {
+                top: 62px;
+                width: auto;
+            }
+
+            .intensity-graph canvas { height: 140px; }
+            .panel-heading { margin-bottom: 6px; }
+            .bottom-bar { display: none; }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-ring"></div>
+        <div class="loading-text">INITIALIZING QUANTUM SIMULATOR</div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <canvas id="canvas3d"></canvas>
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>Young's Double Slit Experiment</h1>
+            <div class="subtitle">3D Quantum Wave-Particle Simulator</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:15px;">
+            <span id="fpsCounter" style="font-family:monospace;font-size:0.75em;color:#444;">60 FPS</span>
+            <span id="particleCount" class="badge">0 particles</span>
+        </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-heading">
+            <div class="panel-heading-copy">
+                <span class="panel-eyebrow">Set up the apparatus</span>
+                <h2><span class="icon">⚙</span>Experiment options</h2>
+            </div>
+            <button class="panel-collapse" type="button" aria-controls="controlPanelContent" aria-expanded="true" aria-label="Minimize experiment options" title="Minimize experiment options">−</button>
+        </div>
+        <div class="panel-content" id="controlPanelContent">
+        <!-- Particle Type -->
+        <div class="section">
+            <div class="section-title"><span class="icon">⚛</span> Particle Type</div>
+            <div class="particle-selector">
+                <button class="particle-btn active" data-type="photon" style="--accent-color:#00d4ff">
+                    <span class="emoji">💡</span>Photon
+                </button>
+                <button class="particle-btn" data-type="electron" style="--accent-color:#7b2ffc">
+                    <span class="emoji">⚡</span>Electron
+                </button>
+            </div>
+        </div>
+
+        <!-- Wavelength -->
+        <div class="section">
+            <div class="section-title"><span class="icon">🌊</span> Wave Properties</div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name" id="wavelengthLabel">Wavelength</span>
+                    <span class="value" id="wavelengthVal">550 nm</span>
+                </div>
+                <input type="range" id="wavelength" min="380" max="780" value="550" step="1">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Emission Rate</span>
+                    <span class="value" id="emissionRateVal">50/s</span>
+                </div>
+                <input type="range" id="emissionRate" min="1" max="200" value="50">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Coherence</span>
+                    <span class="value" id="coherenceVal">100%</span>
+                </div>
+                <input type="range" id="coherence" min="0" max="100" value="100">
+            </div>
+        </div>
+
+        <!-- Slit Configuration -->
+        <div class="section">
+            <div class="section-title"><span class="icon">🔲</span> Slit Configuration</div>
+            <p class="slit-hint">Slit width stays smaller than the center-to-center separation for a valid aperture.</p>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Slit Width</span>
+                    <span class="value" id="slitWidthVal">0.1 mm</span>
+                </div>
+                <input type="range" id="slitWidth" min="1" max="50" value="10">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Slit Separation</span>
+                    <span class="value" id="slitSepVal">0.5 mm</span>
+                </div>
+                <input type="range" id="slitSeparation" min="5" max="100" value="50">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Screen Distance</span>
+                    <span class="value" id="screenDistVal">1.00 m</span>
+                </div>
+                <input type="range" id="screenDistance" min="20" max="100" value="60">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Number of Slits</span>
+                    <span class="value" id="numSlitsVal">2</span>
+                </div>
+                <input type="range" id="numSlits" min="1" max="6" value="2" step="1">
+            </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="section">
+            <div class="section-title"><span class="icon">🎨</span> Visualization</div>
+            <div class="toggle-row">
+                <span class="label">Glow Effects</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="glowEffects" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <span class="label">Particle Trails</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="trails" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <span class="label">Predicted Pattern</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="predictedPattern">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="slit-hint">The screen stays dark until particles land. Fringes develop only from real impacts, over about 5 seconds. Switch this on to ghost the textbook prediction on top for comparison.</p>
+            <div class="toggle-row">
+                <span class="label">Slit Close-up</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="slitsPanel">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="slit-hint">Drops a schematic close-up of the slit plane under the scene: wavelets leaving each slit, the bright fans they build, and a path difference you can click to measure. Wavefronts are enlarged so they are visible next to the slit gap.</p>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="name">Animation Speed</span>
+                    <span class="value" id="speedVal">1.0×</span>
+                </div>
+                <input type="range" id="speed" min="1" max="50" value="10">
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+            <button class="action-btn" id="resetBtn">↻ Reset Experiment</button>
+            <button class="action-btn" id="pauseBtn">⏸ Pause</button>
+            <button class="action-btn danger" id="clearBtn">✕ Clear Screen</button>
+        </div>
+        </div>
+    </div>
+
+    <!-- Experiment data and textbook-style intensity graph -->
+    <div class="info-panel" id="infoPanel">
+        <div class="panel-heading">
+            <div class="panel-heading-copy">
+                <span class="panel-eyebrow">Live results</span>
+                <h2><span class="icon">📊</span>Experiment data</h2>
+            </div>
+            <button class="panel-collapse" type="button" aria-controls="experimentDataContent" aria-expanded="true" aria-label="Minimize experiment data" title="Minimize experiment data">−</button>
+        </div>
+        <div class="panel-content" id="experimentDataContent">
+            <div class="stat-row">
+                <span class="stat-name">Particles fired</span>
+                <span class="stat-val" id="statFired">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Screen hits</span>
+                <span class="stat-val" id="statHits">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Fringe build-up</span>
+                <span class="stat-val" id="statBuild">Awaiting impact</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name" id="statFringeLabel">Fringe spacing, Δy</span>
+                <span class="stat-val" id="statFringe">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name" id="statWavelengthLabel">Wavelength, λ</span>
+                <span class="stat-val" id="statDeBroglie">550 nm</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-name">Pattern</span>
+                <span class="stat-val" id="statPattern">Two-slit</span>
+            </div>
+
+            <div class="physics-desc" id="physicsDesc">
+                <span class="highlight">Photons</span> arrive one at a time. Without which-path information, the probability amplitudes from both slits interfere; many individual hits build the bright and dark fringes.
+            </div>
+
+            <div class="teaching-note">
+                <span aria-hidden="true">💡</span>
+                <span><strong>Bright</strong> bands are constructive interference; <strong>dark</strong> bands are destructive interference.</span>
+            </div>
+
+            <div class="teaching-note">
+                <span aria-hidden="true">🔍</span>
+                <span><strong>Slits View</strong> zooms onto the barrier and opens a close-up of the slits, where you can watch the wavelets from each slit overlap and click to measure a path difference.</span>
+            </div>
+
+            <div class="equation-box" id="equationBox">
+                <span class="equation-main" id="equationMain">Δy = λL / d</span>
+                <span class="equation-note" id="equationNote">Approximate spacing between bright fringes for small angles.</span>
+            </div>
+
+            <div class="intensity-graph" id="intensityGraph">
+                <div class="graph-heading">
+                    <span>Screen intensity profile</span>
+                    <span class="graph-tag">Relative I</span>
+                </div>
+                <canvas id="graphCanvas" role="img" aria-label="Graph of relative intensity against position on the screen. Bright fringes are maxima and dark fringes are minima."></canvas>
+                <div class="chart-legend" aria-label="Graph legend">
+                    <span><i class="legend-swatch"></i>Ideal theory</span>
+                    <span><i class="legend-swatch observed"></i>Observed hits</span>
+                </div>
+                <p class="graph-caption">Blue: ideal Fraunhofer model. Bars: measured hits. 3D wavefront rings are enlarged schematically.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom View Controls -->
+    <div class="bottom-bar">
+        <button class="view-btn active" data-view="perspective">3D Perspective</button>
+        <button class="view-btn view-btn-slits" data-view="slits">🔍 Slits View</button>
+        <button class="view-btn" data-view="top">Top View</button>
+        <button class="view-btn" data-view="side">Side View</button>
+        <button class="view-btn" data-view="screen">Screen View</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // CORE 3D ENGINE (Custom WebGL-like via Canvas)
+        // ==========================================
+        
+        const canvas = document.getElementById('canvas3d');
+        const ctx = canvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        // State
+        let W, H;
+        let paused = false;
+        let time = 0;
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+        let fps = 60;
+        let emissionAccumulator = 0;
+
+        // Camera (x/shiftY/fov are used by the slit close-up view)
+        let camera = {
+            x: 0, y: 80, z: -200,
+            rotX: -0.35, rotY: -0.4, rotZ: 0,
+            fov: 600,
+            shiftY: 0,
+            targetX: 0,
+            targetRotX: -0.35,
+            targetRotY: -0.4,
+            targetY: 80,
+            targetZ: -200,
+            targetFov: 600,
+            targetShiftY: 0
+        };
+
+        let isDragging = false;
+        let lastMouseX, lastMouseY;
+
+        // Experiment Parameters
+        let params = {
+            particleType: 'photon',
+            wavelength: 550,
+            emissionRate: 50,
+            coherence: 100,
+            slitWidth: 10,
+            slitSeparation: 50,
+            screenDistance: 60,
+            numSlits: 2,
+            detector: false,
+            showWave: true,
+            showProbability: false,
+            predictedPattern: false,
+            singleParticle: false,
+            delayedChoice: false,
+            glowEffects: true,
+            trails: true,
+            slitsPanel: false,
+            speed: 1.0
+        };
+
+        // Particles
+        let particles = [];
+        let screenHits = [];
+        let totalFired = 0;
+        let totalHits = 0;
+        let maxParticles = 3000;
+        let maxScreenHits = 15000;
+        let wavePhase = 0;
+
+        // Slit close-up ("Slits View") state
+        const SLITS_DIR = { x: -0.16, y: 0.17, z: -0.97 };   // camera offset from the barrier
+        const SLITS_DIST = 60;                               // ...at this distance
+        const SLITS_RINGS = 26;                              // wavefronts drawn per slit
+        let viewMode = 'perspective';
+        let slitsZoom = 1;
+        let panelRect = { x: 24, y: 0, w: 320, h: 200 };
+        let panelOnTop = false;
+        let panelDocked = false;     // control panel docked to the bottom of the screen
+        let controlTop = 0;
+        let closeupProbe = null;        // {x, y} in canvas pixels, inside the diagram
+        let closeupDrag = false;
+
+        // Measurement bins and the screen's display scale. Physical positions are
+        // converted to scene units only for drawing; the wave calculation stays in mm.
+        let intensityBins = new Float32Array(200);
+        const SCENE_UNITS_PER_MM = 6;
+        const SCREEN_HALF_HEIGHT = 120;
+        const SCREEN_HALF_RANGE_MM = SCREEN_HALF_HEIGHT / SCENE_UNITS_PER_MM;
+
+        // ---- Detection-screen exposure -------------------------------------
+        // The screen is NOT pre-painted with the answer. Every impact deposits a
+        // little exposure into the strip it actually landed on, and that
+        // accumulated density fades in over PATTERN_BUILD_SECONDS, so the fringes
+        // develop gradually out of the hits that landed in each area.
+        const PATTERN_BINS = 320;
+        const PATTERN_BUILD_SECONDS = 5;
+        const PATTERN_KERNEL = [0.1, 0.2, 0.4, 0.2, 0.1];
+        const IMPACT_RING_SECONDS = 0.55;
+        const IMPACT_GLOW_SECONDS = 1.4;
+        let patternExposure = new Float32Array(PATTERN_BINS);
+        let patternBuildStart = null;   // simulation time of the first detection
+        let patternBuildProgress = 0;   // 0..1, exposed for the UI read-out
+
+        // Colors for particle types
+        const particleColors = {
+            photon: { r: 0, g: 212, b: 255, name: 'Photon', mass: 0, desc: '<span class="highlight">Photons</span> arrive as localized detections. Without which-path information, probability amplitudes from the two slits interfere; many hits build the bright and dark fringe pattern.' },
+            electron: { r: 123, g: 47, b: 252, name: 'Electron', mass: 9.109e-31, desc: '<span class="highlight">Electrons</span> also form an interference pattern through their matter-wave probability. The wavelength control sets the de Broglie wavelength in this model; the purple color is only a visual aid.' }
+        };
+
+        // Resize
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+
+            const rect = graphCanvas.getBoundingClientRect();
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            if (rect.width > 0 && rect.height > 0) {
+                graphCanvas.width = Math.round(rect.width * pixelRatio);
+                graphCanvas.height = Math.round(rect.height * pixelRatio);
+                graphCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            }
+
+            updateLayout();
+            if (viewMode === 'slits') updateSlitsCamera();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // ==========================================
+        // 3D MATH
+        // ==========================================
+        
+        function rotateX(p, a) {
+            const c = Math.cos(a), s = Math.sin(a);
+            return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
+        }
+
+        function rotateY(p, a) {
+            const c = Math.cos(a), s = Math.sin(a);
+            return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+        }
+
+        function project(x, y, z) {
+            let p = { x: x - camera.x, y: y - camera.y, z: z - camera.z };
+            p = rotateY(p, camera.rotY);
+            p = rotateX(p, camera.rotX);
+            
+            if (p.z <= 1) return null;
+            
+            const scale = camera.fov / p.z;
+            return {
+                x: W / 2 + p.x * scale,
+                y: H / 2 - p.y * scale + camera.shiftY,
+                z: p.z,
+                scale: scale
+            };
+        }
+
+        // ==========================================
+        // WAVELENGTH TO RGB COLOR
+        // ==========================================
+        
+        function wavelengthToRGB(wl) {
+            let r, g, b;
+            if (wl >= 380 && wl < 440) {
+                r = -(wl - 440) / (440 - 380);
+                g = 0;
+                b = 1;
+            } else if (wl >= 440 && wl < 490) {
+                r = 0;
+                g = (wl - 440) / (490 - 440);
+                b = 1;
+            } else if (wl >= 490 && wl < 510) {
+                r = 0;
+                g = 1;
+                b = -(wl - 510) / (510 - 490);
+            } else if (wl >= 510 && wl < 580) {
+                r = (wl - 510) / (580 - 510);
+                g = 1;
+                b = 0;
+            } else if (wl >= 580 && wl < 645) {
+                r = 1;
+                g = -(wl - 645) / (645 - 580);
+                b = 0;
+            } else if (wl >= 645 && wl <= 780) {
+                r = 1;
+                g = 0;
+                b = 0;
+            } else {
+                r = 0; g = 0; b = 0;
+            }
+            
+            let factor;
+            if (wl >= 380 && wl < 420) factor = 0.3 + 0.7 * (wl - 380) / (420 - 380);
+            else if (wl >= 420 && wl <= 700) factor = 1;
+            else if (wl > 700 && wl <= 780) factor = 0.3 + 0.7 * (780 - wl) / (780 - 700);
+            else factor = 0;
+            
+            return {
+                r: Math.round(255 * Math.pow(r * factor, 0.8)),
+                g: Math.round(255 * Math.pow(g * factor, 0.8)),
+                b: Math.round(255 * Math.pow(b * factor, 0.8))
+            };
+        }
+
+        // ==========================================
+        // PHYSICS: FRAUNHOFER INTERFERENCE PATTERN
+        // ==========================================
+
+        // The sliders are shown in nm, mm and m. Keep the calculation in mm so
+        // Δy = λL/d and the single-slit envelope use consistent physical units.
+        function getWavelengthMm() {
+            return params.wavelength * 1e-6;
+        }
+
+        function getSlitSeparationMm() {
+            return params.slitSeparation * 0.01;
+        }
+
+        function getSlitWidthMm() {
+            return params.slitWidth * 0.01;
+        }
+
+        function getScreenDistanceMm() {
+            return (params.screenDistance / 60) * 1000;
+        }
+
+        function getScreenX() {
+            return params.screenDistance * 3 + 50;
+        }
+
+        function getSlitPositionsScene() {
+            const spacing = getSlitSeparationMm() * SCENE_UNITS_PER_MM;
+            return Array.from({ length: params.numSlits }, (_, i) =>
+                (i - (params.numSlits - 1) / 2) * spacing
+            );
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function calculateIntensity(positionMm, wavelengthMm, slitSepMm, slitWidthMm, screenDistMm, numSlits, hasDetector, coherence = 1) {
+            const safeSlitCount = Math.max(1, numSlits);
+            const beta = Math.PI * slitWidthMm * positionMm / (wavelengthMm * screenDistMm);
+            const envelopeAmplitude = Math.abs(beta) < 1e-10 ? 1 : Math.sin(beta) / beta;
+            const delta = Math.PI * slitSepMm * positionMm / (wavelengthMm * screenDistMm);
+
+            // With which-path information, or zero coherence, independent slits
+            // add intensities. Otherwise pairwise amplitudes produce the fringes.
+            const mutualCoherence = hasDetector ? 0 : clamp(coherence, 0, 1);
+            let arrayIntensity = safeSlitCount;
+            for (let order = 1; order < safeSlitCount; order++) {
+                arrayIntensity += 2 * mutualCoherence * (safeSlitCount - order) * Math.cos(2 * order * delta);
+            }
+
+            return envelopeAmplitude * envelopeAmplitude * Math.max(0, arrayIntensity);
+        }
+
+        function intensityAtSceneY(yScene) {
+            return calculateIntensity(
+                yScene / SCENE_UNITS_PER_MM,
+                getWavelengthMm(),
+                getSlitSeparationMm(),
+                getSlitWidthMm(),
+                getScreenDistanceMm(),
+                params.numSlits,
+                params.detector,
+                params.coherence / 100
+            );
+        }
+
+        function sampleInterferencePattern() {
+            const maxY = SCREEN_HALF_HEIGHT;
+            const maxIntensity = intensityAtSceneY(0);
+            if (!(maxIntensity > 0)) return (Math.random() - 0.5) * 2 * maxY;
+
+            // Rejection sampling makes individual hits follow the calculated
+            // probability distribution instead of drawing a pre-made band.
+            for (let attempts = 0; attempts < 1200; attempts++) {
+                const yScene = (Math.random() - 0.5) * 2 * maxY;
+                if (Math.random() * maxIntensity <= intensityAtSceneY(yScene)) return yScene;
+            }
+            return (Math.random() - 0.5) * 2 * maxY;
+        }
+
+        // ==========================================
+        // PARTICLE SYSTEM
+        // ==========================================
+        
+        function createParticle() {
+            const type = params.particleType;
+            const color = particleColors[type];
+            let pColor;
+            
+            if (type === 'photon') {
+                pColor = wavelengthToRGB(params.wavelength);
+            } else {
+                pColor = { r: color.r, g: color.g, b: color.b };
+            }
+            
+            // Source position (emitter)
+            const sourceX = -250;
+            const sourceY = (Math.random() - 0.5) * 8;
+            const sourceZ = (Math.random() - 0.5) * 8;
+            
+            // Target Y position based on interference pattern
+            const targetY = sampleInterferencePattern();
+            const targetZ = (Math.random() - 0.5) * 10;
+            
+            // Barrier position
+            const barrierX = -50;
+            const screenX = getScreenX();
+            
+            // Calculate which slit to go through visually
+            const slitPositions = getSlitPositionsScene();
+            
+            // Choose closest slit for trajectory if detector is on
+            let slitY;
+            if (params.detector || !params.showWave) {
+                // Particle goes through one slit
+                const chosenSlit = slitPositions[Math.floor(Math.random() * slitPositions.length)];
+                slitY = chosenSlit;
+            } else {
+                // Wave goes through both - pick one for visual trajectory
+                slitY = slitPositions[Math.floor(Math.random() * slitPositions.length)];
+            }
+            
+            const speed = (2 + Math.random()) * params.speed;
+            
+            totalFired++;
+            
+            return {
+                x: sourceX,
+                y: sourceY,
+                z: sourceZ,
+                slitY: slitY,
+                targetY: targetY,
+                targetZ: targetZ,
+                barrierX: barrierX,
+                screenX: screenX,
+                speed: speed,
+                phase: 0,
+                age: 0,
+                alive: true,
+                hit: false,
+                color: pColor,
+                trail: [],
+                waveAmplitude: params.showWave ? 1 : 0,
+                opacity: 1,
+                size: type === 'buckyball' ? 3 : (type === 'neutron' ? 2.2 : 1.8),
+                passedBarrier: false
+            };
+        }
+
+        function updateParticle(p, dt) {
+            if (!p.alive) return;
+            
+            p.age += dt;
+            p.phase += dt * 5;
+            
+            const progress = (p.x - (-250)) / (p.screenX - (-250));
+            
+            // Move forward
+            p.x += p.speed * dt * 30;
+            
+            // Calculate Y based on trajectory phase
+            if (p.x < p.barrierX) {
+                // Before barrier - move toward slit
+                const t = (p.x - (-250)) / (p.barrierX - (-250));
+                p.y = p.y * (1 - t * 0.1) + p.slitY * t * 0.1;
+                
+                // Add wave oscillation
+                if (params.showWave && !params.detector) {
+                    p.waveOffset = Math.sin(p.phase * 3 + p.x * 0.05) * 3 * (1 - progress);
+                } else {
+                    p.waveOffset = 0;
+                }
+            } else if (!p.passedBarrier) {
+                p.passedBarrier = true;
+                // Snap near slit
+                p.y = p.slitY + (Math.random() - 0.5) * getSlitWidthMm() * SCENE_UNITS_PER_MM;
+            } else {
+                // After barrier - fan out toward target
+                const t = (p.x - p.barrierX) / (p.screenX - p.barrierX);
+                const eased = t * t * (3 - 2 * t); // smoothstep
+                p.y = p.slitY * (1 - eased) + p.targetY * eased;
+                p.z = p.z * (1 - eased * 0.3) + p.targetZ * eased;
+                p.waveOffset = 0;
+            }
+            
+            // Store trail
+            if (params.trails && frameCount % 2 === 0) {
+                p.trail.push({ x: p.x, y: p.y + (p.waveOffset || 0), z: p.z });
+                if (p.trail.length > 30) p.trail.shift();
+            }
+            
+            // Hit screen
+            if (p.x >= p.screenX) {
+                p.alive = false;
+                p.hit = true;
+                totalHits++;
+                
+                const hitY = p.targetY;
+                const hitZ = p.targetZ;
+                
+                screenHits.push({
+                    x: p.screenX,
+                    y: hitY,
+                    z: hitZ,
+                    color: p.color,
+                    bornAt: time,
+                    brightness: 1
+                });
+                
+                if (screenHits.length > maxScreenHits) {
+                    screenHits.shift();
+                }
+                
+                // The impact exposes the screen exactly where it landed and starts
+                // (or continues) the 5-second development of the fringe pattern.
+                depositExposure(hitY, 1);
+                
+                // Update intensity bins
+                const binIndex = Math.floor((hitY + SCREEN_HALF_HEIGHT) / (2 * SCREEN_HALF_HEIGHT) * intensityBins.length);
+                if (binIndex >= 0 && binIndex < intensityBins.length) {
+                    intensityBins[binIndex] += 1;
+                }
+            }
+            
+            // Too old
+            if (p.age > 15) p.alive = false;
+        }
+
+        // ==========================================
+        // RENDERING
+        // ==========================================
+        
+        function drawScene() {
+            // Background
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, W, H);
+
+            // Slits View: park the camera on the barrier and draw the close-up
+            // instead of the whole apparatus.
+            if (viewMode === 'slits') {
+                drawSlitsScene();
+                if (params.glowEffects) drawGlow();
+                if (params.slitsPanel) drawSlitsPanel();
+                return;
+            }
+
+            // Draw subtle grid
+            drawGrid();
+            
+            // Draw source (emitter)
+            drawEmitter();
+            
+            // Draw barrier with slits
+            drawBarrier();
+            
+            // Draw the detection screen, then only what the impacts have built on it
+            drawScreen();
+            drawDevelopedPattern();
+            if (params.predictedPattern) drawPredictedPattern();
+            
+            // Draw wave fronts
+            if (params.showWave && !params.detector) {
+                drawWaveFronts();
+            }
+            
+            // Draw probability cloud
+            if (params.showProbability) {
+                drawProbabilityCloud();
+            }
+            
+            // Draw particles
+            drawParticles();
+            
+            // Draw screen hits
+            drawScreenHits();
+            
+            // Draw detector indicator
+            if (params.detector) {
+                drawDetector();
+            }
+            
+            // Post-processing glow
+            if (params.glowEffects) {
+                drawGlow();
+            }
+
+            // Optional schematic close-up, available in every view
+            if (params.slitsPanel) {
+                drawSlitsPanel();
+            }
+        }
+
+        function drawGrid() {
+            const gridSize = 50;
+            const gridRange = 400;
+            
+            ctx.strokeStyle = 'rgba(30, 30, 60, 0.3)';
+            ctx.lineWidth = 0.5;
+            
+            for (let x = -gridRange; x <= gridRange; x += gridSize) {
+                const p1 = project(x, -30, -gridRange);
+                const p2 = project(x, -30, gridRange);
+                if (p1 && p2) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+            
+            for (let z = -gridRange; z <= gridRange; z += gridSize) {
+                const p1 = project(-gridRange, -30, z);
+                const p2 = project(gridRange, -30, z);
+                if (p1 && p2) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawEmitter() {
+            const sourceX = -250;
+            
+            // Emitter body
+            for (let i = -8; i <= 8; i += 2) {
+                for (let j = -8; j <= 8; j += 2) {
+                    const p = project(sourceX - 5, i, j);
+                    if (p) {
+                        const color = particleColors[params.particleType];
+                        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.15 + Math.sin(time * 3 + i + j) * 0.05})`;
+                        ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+                    }
+                }
+            }
+            
+            // Emitter glow
+            const ep = project(sourceX, 0, 0);
+            if (ep) {
+                const color = particleColors[params.particleType];
+                const grd = ctx.createRadialGradient(ep.x, ep.y, 0, ep.x, ep.y, 30);
+                grd.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.3)`);
+                grd.addColorStop(1, 'transparent');
+                ctx.fillStyle = grd;
+                ctx.fillRect(ep.x - 30, ep.y - 30, 60, 60);
+                
+                // Label
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.6)`;
+                ctx.font = '11px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText('SOURCE', ep.x, ep.y + 40);
+            }
+        }
+
+        function drawBarrier() {
+            const barrierX = -50;
+            const barrierHeight = 140;
+            const thickness = 4;
+            
+            // Calculate slit positions
+            const slitPositions = getSlitPositionsScene();
+            const halfSlitW = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
+            
+            // Draw barrier segments (between and outside slits)
+            ctx.fillStyle = 'rgba(80, 80, 120, 0.6)';
+            ctx.strokeStyle = 'rgba(100, 100, 180, 0.4)';
+            ctx.lineWidth = 1;
+            
+            // Build barrier segments
+            const segments = [];
+            
+            // Sort slit positions
+            const sortedSlits = [...slitPositions].sort((a, b) => a - b);
+            
+            // Bottom segment
+            segments.push({ y1: -barrierHeight, y2: sortedSlits[0] - halfSlitW });
+            
+            // Between slits
+            for (let i = 0; i < sortedSlits.length - 1; i++) {
+                segments.push({
+                    y1: sortedSlits[i] + halfSlitW,
+                    y2: sortedSlits[i + 1] - halfSlitW
+                });
+            }
+            
+            // Top segment
+            segments.push({ y1: sortedSlits[sortedSlits.length - 1] + halfSlitW, y2: barrierHeight });
+            
+            // Draw each segment
+            for (const seg of segments) {
+                const depth = 15;
+                // Front face
+                for (let z = -depth; z <= depth; z += 2) {
+                    const p1 = project(barrierX, seg.y1, z);
+                    const p2 = project(barrierX, seg.y2, z);
+                    if (p1 && p2) {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(80, 80, 140, ${0.3 + Math.abs(z) / depth * 0.2})`;
+                        ctx.stroke();
+                    }
+                }
+                
+                // Fill faces
+                const corners = [
+                    project(barrierX, seg.y1, -depth),
+                    project(barrierX, seg.y2, -depth),
+                    project(barrierX, seg.y2, depth),
+                    project(barrierX, seg.y1, depth)
+                ];
+                
+                if (corners.every(c => c)) {
+                    ctx.beginPath();
+                    ctx.moveTo(corners[0].x, corners[0].y);
+                    for (let i = 1; i < corners.length; i++) {
+                        ctx.lineTo(corners[i].x, corners[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(40, 40, 80, 0.5)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(80, 80, 160, 0.3)';
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw slit glow
+            for (const slitY of slitPositions) {
+                const sp = project(barrierX, slitY, 0);
+                if (sp) {
+                    const grd = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 15 * sp.scale);
+                    const color = particleColors[params.particleType];
+                    grd.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.15)`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grd;
+                    const size = 20 * sp.scale;
+                    ctx.fillRect(sp.x - size, sp.y - size, size * 2, size * 2);
+                }
+            }
+            
+            // Label
+            const lp = project(barrierX, -barrierHeight - 10, 0);
+            if (lp) {
+                ctx.fillStyle = 'rgba(100, 100, 180, 0.5)';
+                ctx.font = '11px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(`BARRIER (${params.numSlits} slit${params.numSlits > 1 ? 's' : ''})`, lp.x, lp.y);
+            }
+        }
+
+        function drawScreen() {
+            const screenX = getScreenX();
+            const screenH = 140;
+            const screenD = 30;
+            
+            // Screen surface
+            const corners = [
+                project(screenX, -screenH, -screenD),
+                project(screenX, screenH, -screenD),
+                project(screenX, screenH, screenD),
+                project(screenX, -screenH, screenD)
+            ];
+            
+            if (corners.every(c => c)) {
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(15, 15, 30, 0.7)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(60, 60, 120, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // Screen label
+            const lp = project(screenX, -screenH - 10, 0);
+            if (lp) {
+                ctx.fillStyle = 'rgba(100, 100, 180, 0.5)';
+                ctx.font = '11px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText('DETECTION SCREEN', lp.x, lp.y);
+            }
+        }
+
+        // ---- Screen exposure: deposition, development and rendering --------
+
+        function depositExposure(yScene, weight) {
+            const span = 2 * SCREEN_HALF_HEIGHT;
+            const center = ((yScene + SCREEN_HALF_HEIGHT) / span) * PATTERN_BINS;
+            const base = Math.round(center);
+            const half = (PATTERN_KERNEL.length - 1) / 2;
+
+            // A detection is a finite spot, not an infinitely thin line, so the
+            // exposure is spread over a few neighbouring strips.
+            for (let k = 0; k < PATTERN_KERNEL.length; k++) {
+                const idx = base + k - half;
+                if (idx < 0 || idx >= PATTERN_BINS) continue;
+                patternExposure[idx] += weight * PATTERN_KERNEL[k];
+            }
+
+            // The first impact of a run starts the development clock.
+            if (patternBuildStart === null) patternBuildStart = time;
+        }
+
+        function clearPatternExposure() {
+            patternExposure = new Float32Array(PATTERN_BINS);
+            patternBuildStart = null;
+            patternBuildProgress = 0;
+        }
+
+        // Smoothstep ramp from the first impact: nothing at t = 0, fully developed
+        // after PATTERN_BUILD_SECONDS, so fringes fade into place instead of popping.
+        function patternReveal() {
+            if (patternBuildStart === null) return 0;
+            const u = clamp((time - patternBuildStart) / PATTERN_BUILD_SECONDS, 0, 1);
+            return u * u * (3 - 2 * u);
+        }
+
+        function screenPatternColor() {
+            return params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+        }
+
+        function drawDevelopedPattern() {
+            const reveal = patternReveal();
+            patternBuildProgress = reveal;
+            if (reveal <= 0.002) {
+                drawAwaitingDetectionsHint();
+                return;
+            }
+
+            let maxExposure = 0;
+            for (let i = 0; i < PATTERN_BINS; i++) {
+                if (patternExposure[i] > maxExposure) maxExposure = patternExposure[i];
+            }
+            if (!(maxExposure > 0)) {
+                drawAwaitingDetectionsHint();
+                return;
+            }
+
+            const screenX = getScreenX();
+            const screenDepth = 28;
+            const color = screenPatternColor();
+            const binHeight = (2 * SCREEN_HALF_HEIGHT) / PATTERN_BINS;
+
+            // Additive blending makes overlapping exposures glow like a phosphor
+            // screen; untouched strips stay black, so dark fringes stay dark.
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+
+            let i = 0;
+            while (i < PATTERN_BINS) {
+                const density = patternExposure[i] / maxExposure;
+                if (density < 0.008) { i++; continue; }
+
+                // Merge neighbouring strips of almost equal density into one quad
+                // so a fully developed pattern costs a handful of fills.
+                let j = i + 1;
+                while (j < PATTERN_BINS &&
+                       Math.abs(patternExposure[j] / maxExposure - density) < 0.02) j++;
+
+                let sum = 0;
+                for (let k = i; k < j; k++) sum += patternExposure[k];
+                const average = (sum / (j - i)) / maxExposure;
+
+                const y1 = -SCREEN_HALF_HEIGHT + i * binHeight;
+                const y2 = -SCREEN_HALF_HEIGHT + j * binHeight;
+                const corners = [
+                    project(screenX + 0.35, y1, -screenDepth),
+                    project(screenX + 0.35, y2, -screenDepth),
+                    project(screenX + 0.35, y2, screenDepth),
+                    project(screenX + 0.35, y1, screenDepth)
+                ];
+                i = j;
+                if (!corners.every(Boolean)) continue;
+
+                const alpha = reveal * (0.05 + 0.9 * Math.pow(average, 0.85));
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for (let c = 1; c < corners.length; c++) ctx.lineTo(corners[c].x, corners[c].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha.toFixed(3)})`;
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawAwaitingDetectionsHint() {
+            if (totalHits > 0) return;
+            const p = project(getScreenX() + 0.4, 0, 0);
+            if (!p) return;
+            const pulse = 0.12 + Math.sin(time * 2) * 0.04;
+            ctx.save();
+            ctx.fillStyle = `rgba(150, 165, 210, ${Math.max(0.05, pulse).toFixed(3)})`;
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText('AWAITING DETECTIONS', p.x, p.y);
+            ctx.restore();
+        }
+
+        // Optional teaching aid: the ideal Fraunhofer fringes, ghosted on top of
+        // whatever the particles have actually built up. Off by default.
+        function drawPredictedPattern() {
+            const screenX = getScreenX();
+            const screenDepth = 28;
+            const color = screenPatternColor();
+            const centralIntensity = intensityAtSceneY(0);
+            if (!(centralIntensity > 0)) return;
+
+            // Each strip is shaded from the same Fraunhofer intensity used by
+            // the particle sampler and graph. Dark minima reveal the black screen.
+            const stripHeight = 0.75;
+            for (let y = -SCREEN_HALF_HEIGHT; y < SCREEN_HALF_HEIGHT; y += stripHeight) {
+                const y1 = y;
+                const y2 = Math.min(y + stripHeight, SCREEN_HALF_HEIGHT);
+                const midpoint = (y1 + y2) / 2;
+                const relativeIntensity = clamp(intensityAtSceneY(midpoint) / centralIntensity, 0, 1);
+                if (relativeIntensity < 0.012) continue;
+
+                const brightness = Math.pow(relativeIntensity, 0.62);
+                const corners = [
+                    project(screenX + 0.35, y1, -screenDepth),
+                    project(screenX + 0.35, y2, -screenDepth),
+                    project(screenX + 0.35, y2, screenDepth),
+                    project(screenX + 0.35, y1, screenDepth)
+                ];
+                if (!corners.every(Boolean)) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(0.03 + brightness * 0.28).toFixed(3)})`;
+                ctx.fill();
+            }
+        }
+
+        function drawWaveFronts() {
+            wavePhase += 0.03 * params.speed;
+            
+            const barrierX = -50;
+            const color = particleColors[params.particleType];
+            const wl = params.wavelength * 0.08;
+            
+            // Wave fronts before barrier (circular from source)
+            for (let i = 0; i < 12; i++) {
+                const radius = ((wavePhase * wl + i * wl * 2) % (250)) ;
+                if (radius < 5 || radius > 200) continue;
+                
+                const alpha = Math.max(0, 0.15 - radius * 0.0008);
+                ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+                ctx.lineWidth = 1.5;
+                
+                ctx.beginPath();
+                const sourceX = -250;
+                for (let a = -0.8; a <= 0.8; a += 0.05) {
+                    const wx = sourceX + radius * Math.cos(a);
+                    const wy = radius * Math.sin(a) * 0.8;
+                    if (wx > barrierX - 5) continue;
+                    const p = project(wx, wy, 0);
+                    if (p) {
+                        if (a === -0.8 || (wx >= barrierX - 5)) ctx.moveTo(p.x, p.y);
+                        else ctx.lineTo(p.x, p.y);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // Wave fronts after barrier (from each slit)
+            if (params.numSlits >= 1) {
+                const slitPositions = getSlitPositionsScene();
+                
+                for (const slitY of slitPositions) {
+                    for (let i = 0; i < 10; i++) {
+                        const radius = ((wavePhase * wl + i * wl * 2) % 300);
+                        if (radius < 2 || radius > 250) continue;
+                        
+                        const alpha = Math.max(0, 0.1 - radius * 0.0005);
+                        ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+                        ctx.lineWidth = 1;
+                        
+                        ctx.beginPath();
+                        let started = false;
+                        for (let a = -1.2; a <= 1.2; a += 0.04) {
+                            const wx = barrierX + radius * Math.cos(a);
+                            const wy = slitY + radius * Math.sin(a);
+                            if (wx < barrierX + 2) continue;
+                            const screenX = getScreenX();
+                            if (wx > screenX) continue;
+                            
+                            const p = project(wx, wy, 0);
+                            if (p) {
+                                if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+                                else ctx.lineTo(p.x, p.y);
+                            }
+                        }
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawProbabilityCloud() {
+            const screenX = getScreenX();
+            const color = params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+            const centralIntensity = intensityAtSceneY(0);
+            if (!(centralIntensity > 0)) return;
+
+            for (let y = -SCREEN_HALF_HEIGHT; y <= SCREEN_HALF_HEIGHT; y += 3) {
+                const intensity = clamp(intensityAtSceneY(y) / centralIntensity, 0, 1);
+                const alpha = Math.min(0.4, intensity * 0.4);
+                
+                if (alpha < 0.01) continue;
+                
+                // Draw probability band
+                for (let xOff = -30; xOff <= 30; xOff += 8) {
+                    const p = project(screenX + xOff - 15, y, 0);
+                    if (p) {
+                        const size = Math.max(2, intensity * 4 * p.scale);
+                        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.5})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawParticles() {
+            const color = particleColors[params.particleType];
+            
+            // Sort by Z for proper depth ordering
+            const sorted = [...particles].filter(p => p.alive).sort((a, b) => {
+                const pa = project(a.x, a.y, a.z);
+                const pb = project(b.x, b.y, b.z);
+                if (!pa) return 1;
+                if (!pb) return -1;
+                return pb.z - pa.z;
+            });
+            
+            for (const p of sorted) {
+                const pp = project(p.x, p.y + (p.waveOffset || 0), p.z);
+                if (!pp) continue;
+                
+                const { r, g, b } = p.color;
+                // Up close a scene-sized particle would fill the screen, so its
+                // drawn radius is capped in the slit close-up.
+                const size = viewMode === 'slits'
+                    ? clamp(p.size * pp.scale * 0.8, 1.4, 4.5)
+                    : p.size * pp.scale * 0.8;
+                
+                if (size < 0.3) continue;
+                
+                // Draw trail
+                if (params.trails && p.trail.length > 1) {
+                    ctx.beginPath();
+                    let started = false;
+                    for (let i = 0; i < p.trail.length; i++) {
+                        const tp = project(p.trail[i].x, p.trail[i].y, p.trail[i].z);
+                        if (tp) {
+                            if (!started) { ctx.moveTo(tp.x, tp.y); started = true; }
+                            else ctx.lineTo(tp.x, tp.y);
+                        }
+                    }
+                    ctx.lineTo(pp.x, pp.y);
+                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.15)`;
+                    ctx.lineWidth = Math.max(0.5, size * 0.3);
+                    ctx.stroke();
+                }
+                
+                // Glow
+                if (params.glowEffects && size > 1) {
+                    const grd = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, size * 4);
+                    grd.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.25)`);
+                    grd.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.05)`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(pp.x - size * 4, pp.y - size * 4, size * 8, size * 8);
+                }
+                
+                // Core particle
+                ctx.beginPath();
+                ctx.arc(pp.x, pp.y, Math.max(1, size), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.9)`;
+                ctx.fill();
+                
+                // Bright center
+                ctx.beginPath();
+                ctx.arc(pp.x, pp.y, Math.max(0.5, size * 0.4), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, 0.6)`;
+                ctx.fill();
+            }
+        }
+
+        // Radial glow sprites are cached per colour so a fresh impact can be lit
+        // with a single drawImage instead of building a gradient every frame.
+        const glowSpriteCache = new Map();
+
+        function glowSprite(r, g, b) {
+            const key = `${r},${g},${b}`;
+            let sprite = glowSpriteCache.get(key);
+            if (sprite) return sprite;
+
+            const size = 64;
+            sprite = document.createElement('canvas');
+            sprite.width = size;
+            sprite.height = size;
+            const sctx = sprite.getContext('2d');
+            const grd = sctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+            grd.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+            grd.addColorStop(0.22, `rgba(${r}, ${g}, ${b}, 0.5)`);
+            grd.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.12)`);
+            grd.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            sctx.fillStyle = grd;
+            sctx.fillRect(0, 0, size, size);
+            glowSpriteCache.set(key, sprite);
+            return sprite;
+        }
+
+        function drawScreenHits() {
+            if (screenHits.length === 0) return;
+
+            // Hits are pushed in arrival order, so the still-glowing ones are at
+            // the tail: split the array instead of testing every entry twice.
+            let freshStart = screenHits.length;
+            while (freshStart > 0 &&
+                   (time - screenHits[freshStart - 1].bornAt) < IMPACT_GLOW_SECONDS) {
+                freshStart--;
+            }
+
+            // Settled detections: tiny phosphor pixels, one cheap fill each. The
+            // colour is shared by the whole buffer because any change of particle
+            // type or wavelength resets the experiment.
+            const settledColor = screenHits[screenHits.length - 1].color;
+            ctx.save();
+            ctx.fillStyle = `rgba(${settledColor.r}, ${settledColor.g}, ${settledColor.b}, 0.5)`;
+            for (let i = 0; i < freshStart; i++) {
+                const hit = screenHits[i];
+                const p = project(hit.x, hit.y, hit.z);
+                if (!p) continue;
+                const size = Math.max(1, 1.4 * p.scale);
+                ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+            }
+            ctx.restore();
+
+            // Fresh impacts: the flash, expanding detection ring and afterglow that
+            // visibly "seeds" the fringe in the area the particle just landed.
+            const sprite = glowSprite(settledColor.r, settledColor.g, settledColor.b);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = freshStart; i < screenHits.length; i++) {
+                const hit = screenHits[i];
+                const age = time - hit.bornAt;
+                const p = project(hit.x, hit.y, hit.z);
+                if (!p) continue;
+
+                const { r, g, b } = hit.color;
+                const life = 1 - age / IMPACT_GLOW_SECONDS;
+
+                // Afterglow that fades as the spot settles into the built-up pattern
+                const glowSize = Math.max(3.5, 8 * p.scale) * (1 + (1 - life) * 0.7);
+                ctx.globalAlpha = life * life * 0.6;
+                ctx.drawImage(sprite, p.x - glowSize, p.y - glowSize, glowSize * 2, glowSize * 2);
+
+                // Expanding ring marks the instant of detection
+                if (params.glowEffects && age < IMPACT_RING_SECONDS) {
+                    const t = age / IMPACT_RING_SECONDS;
+                    ctx.globalAlpha = (1 - t) * 0.45;
+                    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.lineWidth = Math.max(0.5, 1.5 * p.scale * (1 - t));
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, Math.max(0.8, (1.5 + t * 11) * p.scale), 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Hot core of the detection
+                const core = Math.max(1, 1.7 * p.scale);
+                ctx.globalAlpha = 0.35 + life * 0.6;
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, core, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.5 * life + 0.15;
+                ctx.fillStyle = 'rgb(255, 255, 255)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, core * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawDetector() {
+            const barrierX = -50;
+            const slitPositions = getSlitPositionsScene();
+            
+            for (const slitY of slitPositions) {
+                const dp = project(barrierX + 15, slitY, 0);
+                if (dp) {
+                    // Detector icon
+                    const pulse = 0.5 + Math.sin(time * 5) * 0.3;
+                    
+                    // Eye-like detector
+                    ctx.strokeStyle = `rgba(255, 50, 50, ${0.5 + pulse * 0.3})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(dp.x, dp.y, 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = `rgba(255, 50, 50, ${0.6 + pulse * 0.2})`;
+                    ctx.beginPath();
+                    ctx.arc(dp.x, dp.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Glow
+                    const grd = ctx.createRadialGradient(dp.x, dp.y, 0, dp.x, dp.y, 25);
+                    grd.addColorStop(0, `rgba(255, 50, 50, ${0.1 * pulse})`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(dp.x - 25, dp.y - 25, 50, 50);
+                    
+                    // Label
+                    ctx.fillStyle = 'rgba(255, 80, 80, 0.6)';
+                    ctx.font = '9px system-ui';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('DETECTOR', dp.x, dp.y + 18);
+                }
+            }
+            
+            // Observer warning
+            ctx.fillStyle = 'rgba(255, 80, 80, 0.5)';
+            ctx.font = '12px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠ WHICH-PATH INFORMATION DETECTED — WAVE FUNCTION COLLAPSED', W / 2, H - 60);
+        }
+
+        function drawGlow() {
+            // Subtle vignette
+            const grd = ctx.createRadialGradient(W/2, H/2, W * 0.3, W/2, H/2, W * 0.7);
+            grd.addColorStop(0, 'transparent');
+            grd.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        // ==========================================
+        // SLIT CLOSE-UP — "SLITS VIEW"
+        // ==========================================
+        // A real double slit is tiny: with the default settings the two slits are
+        // 3 scene units apart inside a 500 unit long apparatus, so at normal zoom
+        // they are a couple of pixels wide and impossible to see. This mode fixes
+        // that in two ways:
+        //
+        //   1. It parks the camera right in front of the barrier and draws the
+        //      barrier as a solid slab with the apertures cut out of it, with the
+        //      Huygens wavelets leaving every slit and the static interference
+        //      field those wavelets build (the bright fans / dark nodal lines).
+        //   2. It draws a schematic "slit close-up" panel underneath that spells
+        //      out the mechanism: crests leaving both slits, where they arrive
+        //      together (bright fringe) and where they arrive opposite (dark).
+        //
+        // The wavelength is ~1000x smaller than the slit separation, so it cannot
+        // be drawn to scale next to it. Both pictures therefore use an enlarged
+        // wavelength, and the factor is always reported on screen.
+
+        // ---- Layout -----------------------------------------------------------
+        // The close-up panel is docked into whatever space the two side panels and
+        // the bottom bar leave free, so the 3D slit close-up keeps the rest.
+        function updateLayout() {
+            const cpEl = document.getElementById('controlPanel');
+            const ipEl = document.getElementById('infoPanel');
+            const bbEl = document.querySelector('.bottom-bar');
+            const cp = cpEl ? cpEl.getBoundingClientRect() : null;
+            const ip = (ipEl && getComputedStyle(ipEl).display !== 'none')
+                ? ipEl.getBoundingClientRect() : null;
+            const bb = (bbEl && getComputedStyle(bbEl).display !== 'none')
+                ? bbEl.getBoundingClientRect() : null;
+
+            const docked = !!cp && cp.top > H * 0.5;   // control panel docked to the bottom
+            panelDocked = docked;
+            controlTop = cp ? cp.top : H;
+            const left = (!cp || docked) ? 20 : Math.max(20, cp.right + 20);
+            const right = (ip && !docked ? ip.left : W) - 20;
+            const bottom = (bb ? bb.top : H - 10) - 14;
+            const top = 76;
+
+            if (!docked && right - left >= 430) {
+                panelOnTop = false;
+                const h = clamp((bottom - top) * 0.54, 250, 460);
+                const w = Math.min(right - left, 1180);
+                panelRect = { x: left + (right - left - w) / 2, y: bottom - h, w: w, h: h };
+            } else {
+                panelOnTop = true;
+                const h = clamp(H * 0.40, 190, 320);
+                panelRect = { x: 20, y: docked ? 66 : top, w: Math.max(200, W - 40), h: h };
+            }
+        }
+
+        // Vertical band of the canvas left over for the 3D close-up once the
+        // schematic panel has taken its share.
+        function slitsSceneBounds() {
+            const bottom = panelDocked ? Math.min(H - 60, controlTop - 12) : H - 60;
+            if (!params.slitsPanel) return { top: 70, bottom: bottom };
+            const r = panelRect;
+            return panelOnTop
+                ? { top: r.y + r.h + 18, bottom: bottom }
+                : { top: 86, bottom: r.y - 14 };
+        }
+
+        function slitsVisibleHeight() {
+            const b = slitsSceneBounds();
+            return Math.max(150, b.bottom - b.top);
+        }
+
+        function slitsSceneShiftY() {
+            const b = slitsSceneBounds();
+            return (b.top + b.bottom) / 2 - H / 2;
+        }
+
+        // Point the camera at the barrier from a fixed 3/4 angle and choose the
+        // focal length that makes the slit separation fill ~40% of the free height.
+        function updateSlitsCamera() {
+            const len = Math.hypot(SLITS_DIR.x, SLITS_DIR.y, SLITS_DIR.z);
+            const ux = SLITS_DIR.x / len, uy = SLITS_DIR.y / len, uz = SLITS_DIR.z / len;
+
+            camera.targetX = -50 + ux * SLITS_DIST;
+            camera.targetY = uy * SLITS_DIST;
+            camera.targetZ = uz * SLITS_DIST;
+
+            // Forward axis of the projection, so the barrier lands dead centre.
+            const fx = -ux, fy = -uy, fz = -uz;
+            camera.targetRotX = Math.asin(clamp(fy, -1, 1));
+            camera.targetRotY = Math.atan2(-fx, fz);
+
+            const separation = Math.max(0.2, getSlitSeparationMm() * SCENE_UNITS_PER_MM);
+            const visibleH = slitsVisibleHeight();
+            const wanted = Math.min(0.40 * visibleH / separation, 0.085 * W);
+            camera.targetFov = clamp(wanted * SLITS_DIST * slitsZoom, 150, 60000);
+            camera.targetShiftY = slitsSceneShiftY();
+        }
+
+        // ---- Small helpers ----------------------------------------------------
+
+        function cameraForward() {
+            const rx = camera.rotX, ry = camera.rotY;
+            return {
+                x: -Math.cos(rx) * Math.sin(ry),
+                y: Math.sin(rx),
+                z: Math.cos(rx) * Math.cos(ry)
+            };
+        }
+
+        // Screen point -> the point where that view ray crosses the z = 0 plane,
+        // which is the plane the particles and wavefronts live in.
+        function unprojectToZ0(sx, sy) {
+            const rx = camera.rotX, ry = camera.rotY;
+            const vx = (sx - W / 2) / camera.fov;
+            const vy = -(sy - H / 2 - camera.shiftY) / camera.fov;
+            const vz = 1;
+            const y1 = vy * Math.cos(rx) + vz * Math.sin(rx);
+            const z1 = -vy * Math.sin(rx) + vz * Math.cos(rx);
+            const x2 = vx * Math.cos(ry) - z1 * Math.sin(ry);
+            const z2 = vx * Math.sin(ry) + z1 * Math.cos(ry);
+            if (Math.abs(z2) < 1e-9) return null;
+            const t = -camera.z / z2;
+            if (t <= 0) return null;
+            return { x: camera.x + t * x2, y: camera.y + t * y1 };
+        }
+
+        function roundRectPath(c, x, y, w, h, r) {
+            const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+            c.beginPath();
+            c.moveTo(x + rad, y);
+            c.lineTo(x + w - rad, y);
+            c.quadraticCurveTo(x + w, y, x + w, y + rad);
+            c.lineTo(x + w, y + h - rad);
+            c.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+            c.lineTo(x + rad, y + h);
+            c.quadraticCurveTo(x, y + h, x, y + h - rad);
+            c.lineTo(x, y + rad);
+            c.quadraticCurveTo(x, y, x + rad, y);
+            c.closePath();
+        }
+
+        function slitsWaveColor() {
+            return params.particleType === 'photon'
+                ? wavelengthToRGB(params.wavelength)
+                : particleColors[params.particleType];
+        }
+
+        // Visual wavelength for the close-up: ~26 px on screen at the slits.
+        function slitsLambdaWorld() {
+            const scale = camera.fov / SLITS_DIST;
+            return clamp(26 / Math.max(0.001, scale), 0.02, 8);
+        }
+
+        function slitsWavePhase() {
+            return (time * 1.6) % 1;
+        }
+
+        // ==========================================
+        // 3D SLIT CLOSE-UP
+        // ==========================================
+
+        function drawSlitsScene() {
+            // The wave plane sits at z = 0, halfway through the 30 unit deep
+            // barrier, so the wall is split: the far half goes behind the waves
+            // and the near half in front of them. What stays visible is exactly
+            // what you can see through the slit tunnels.
+            drawBarrierSlabs(0, 15, 0.5);   // far half, in shadow: the tunnel reads as depth
+            drawSlitsInterferenceField();
+            drawSlitWavelets();
+            drawBarrierSlabs(-15, 0, 1);
+            drawParticles();
+            drawSlitsAnnotations();
+        }
+
+        // The barrier as a solid slab with the apertures cut out of it.
+        function drawBarrierSlabs(zNear, zFar, brightness) {
+            const barrierX = -50, halfT = 2, depth = 15, barrierH = 140;
+            const halfSlit = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
+            const sorted = getSlitPositionsScene().sort((a, b) => a - b);
+
+            // The wall is hundreds of units tall; only keep the part that can
+            // actually be on screen so no vertex lands behind the camera.
+            const scale = camera.fov / SLITS_DIST;
+            const span = clamp(1.6 * (H / 2) / Math.max(0.001, scale), 6, barrierH);
+            const yLo = -span, yHi = span;
+
+            const segments = [{ y1: Math.max(-barrierH, yLo), y2: sorted[0] - halfSlit }];
+            for (let i = 0; i < sorted.length - 1; i++) {
+                segments.push({ y1: sorted[i] + halfSlit, y2: sorted[i + 1] - halfSlit });
+            }
+            segments.push({
+                y1: sorted[sorted.length - 1] + halfSlit,
+                y2: Math.min(barrierH, yHi)
+            });
+
+            const fwd = cameraForward();
+            const toCam = { x: -fwd.x, y: -fwd.y, z: -fwd.z };
+            const faces = [];
+
+            for (const seg of segments) {
+                if (seg.y2 - seg.y1 < 0.02) continue;
+                const y1 = clamp(seg.y1, yLo, yHi);
+                const y2 = clamp(seg.y2, yLo, yHi);
+                if (y2 - y1 < 0.02) continue;
+
+                const box = [
+                    { n: [-1, 0, 0], p: [[barrierX - halfT, y1, zNear], [barrierX - halfT, y2, zNear], [barrierX - halfT, y2, zFar], [barrierX - halfT, y1, zFar]] },
+                    { n: [1, 0, 0], p: [[barrierX + halfT, y1, zNear], [barrierX + halfT, y2, zNear], [barrierX + halfT, y2, zFar], [barrierX + halfT, y1, zFar]] },
+                    { n: [0, -1, 0], p: [[barrierX - halfT, y1, zNear], [barrierX + halfT, y1, zNear], [barrierX + halfT, y1, zFar], [barrierX - halfT, y1, zFar]] },
+                    { n: [0, 1, 0], p: [[barrierX - halfT, y2, zNear], [barrierX + halfT, y2, zNear], [barrierX + halfT, y2, zFar], [barrierX - halfT, y2, zFar]] },
+                    { n: [0, 0, -1], p: [[barrierX - halfT, y1, zNear], [barrierX + halfT, y1, zNear], [barrierX + halfT, y2, zNear], [barrierX - halfT, y2, zNear]] },
+                    { n: [0, 0, 1], p: [[barrierX - halfT, y1, zFar], [barrierX + halfT, y1, zFar], [barrierX + halfT, y2, zFar], [barrierX - halfT, y2, zFar]] }
+                ];
+
+                for (const face of box) {
+                    const facing = face.n[0] * toCam.x + face.n[1] * toCam.y + face.n[2] * toCam.z;
+                    if (facing <= 0.01) continue;
+                    const pts = [];
+                    let ok = true;
+                    let depthSum = 0;
+                    for (const p of face.p) {
+                        const q = project(p[0], p[1], p[2]);
+                        if (!q) { ok = false; break; }
+                        pts.push(q);
+                        depthSum += q.z;
+                    }
+                    if (!ok) continue;
+                    faces.push({ pts: pts, depth: depthSum / pts.length, shade: facing });
+                }
+            }
+
+            faces.sort((a, b) => b.depth - a.depth);
+            for (const face of faces) {
+                const light = 0.14 + 0.86 * face.shade;
+                ctx.beginPath();
+                ctx.moveTo(face.pts[0].x, face.pts[0].y);
+                for (let i = 1; i < face.pts.length; i++) ctx.lineTo(face.pts[i].x, face.pts[i].y);
+                ctx.closePath();
+                ctx.fillStyle = `rgb(${Math.round((72 * light + 6) * brightness)}, ${Math.round((80 * light + 8) * brightness)}, ${Math.round((126 * light + 14) * brightness)})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(150, 170, 235, ${((0.10 + 0.22 * face.shade) * brightness).toFixed(3)})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // Apertures: bright rims plus the tunnel edges, so the slits read as
+            // openings you can see through rather than gaps in a flat sheet.
+            const col = slitsWaveColor();
+            for (const slitY of sorted) {
+                const yA = slitY - halfSlit, yB = slitY + halfSlit;
+
+                // glow spilling out of the opening (only for the front half),
+                // laid down first so the rim and the shaded mouth sit on top
+                const sp = zNear <= -depth + 0.001 ? project(barrierX, slitY, -depth) : null;
+                if (sp) {
+                    const grd = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 54);
+                    grd.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, 0.42)`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(sp.x - 54, sp.y - 54, 108, 108);
+                }
+
+                for (const zz of [zNear, zFar]) {
+                    const corners = [
+                        project(barrierX - halfT, yA, zz),
+                        project(barrierX + halfT, yA, zz),
+                        project(barrierX + halfT, yB, zz),
+                        project(barrierX - halfT, yB, zz)
+                    ];
+                    if (!corners.every(Boolean)) continue;
+                    const near = zz === zNear;
+                    ctx.beginPath();
+                    ctx.moveTo(corners[0].x, corners[0].y);
+                    for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+                    ctx.closePath();
+                    if (near) {
+                        // soft halo then a crisp edge, so the opening reads clearly
+                        ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.22)`;
+                        ctx.lineWidth = 7;
+                        ctx.stroke();
+                    }
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${near ? 0.95 : 0.3})`;
+                    ctx.lineWidth = near ? 2.2 : 1;
+                    ctx.stroke();
+
+                    // Shade the mouth: a slit is a hole, so it should read as
+                    // depth rather than as another lit surface.
+                    if (near) {
+                        ctx.fillStyle = 'rgba(4, 6, 14, 0.6)';
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Time-averaged interference of the slits, painted on the z = 0 plane to
+        // the right of the barrier. It does not change with time, so it is only
+        // rebuilt when the camera or the slit geometry moves.
+        const field3D = { key: '', canvas: null };
+
+        function drawSlitsInterferenceField() {
+            if (params.numSlits < 1) return;
+            const exit = project(-50 + 2.6, 0, 0);
+            if (!exit) return;
+            const region = { x: clamp(exit.x, 0, W), y: 0, w: W - clamp(exit.x, 0, W), h: H };
+            if (region.w < 40) return;
+
+            const lambda = slitsLambdaWorld();
+            const slits = getSlitPositionsScene();
+            const col = slitsWaveColor();
+            const key = [
+                region.x | 0, region.w | 0, H | 0,
+                camera.fov.toFixed(0), camera.rotX.toFixed(3), camera.rotY.toFixed(3),
+                camera.x.toFixed(2), camera.y.toFixed(2), camera.z.toFixed(2), camera.shiftY.toFixed(0),
+                lambda.toFixed(4), slits.length, slits[0].toFixed(3), col.r, col.g, col.b
+            ].join('|');
+
+            if (field3D.key !== key) {
+                buildSlitsInterferenceField(region, lambda, slits, col);
+                field3D.key = key;
+            }
+            if (!field3D.canvas) return;
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(field3D.canvas, region.x, region.y, region.w, region.h);
+            ctx.restore();
+        }
+
+        function buildSlitsInterferenceField(region, lambda, slits, col) {
+            const cell = 7;
+            const fw = Math.max(1, Math.ceil(region.w / cell));
+            const fh = Math.max(1, Math.ceil(region.h / cell));
+            let cv = field3D.canvas;
+            if (!cv || cv.width !== fw || cv.height !== fh) {
+                cv = document.createElement('canvas');
+                cv.width = fw;
+                cv.height = fh;
+                field3D.canvas = cv;
+            }
+            const sctx = cv.getContext('2d');
+            const img = sctx.createImageData(fw, fh);
+            const data = img.data;
+            const k = 2 * Math.PI / lambda;
+            const spread = lambda * 30;
+            const invN2 = 1 / (slits.length * slits.length);
+
+            for (let j = 0; j < fh; j++) {
+                const sy = region.y + (j + 0.5) * cell;
+                for (let i = 0; i < fw; i++) {
+                    const sx = region.x + (i + 0.5) * cell;
+                    const hit = unprojectToZ0(sx, sy);
+                    let value = 0;
+                    if (hit && hit.x > -50) {
+                        let re = 0, im = 0;
+                        for (let s = 0; s < slits.length; s++) {
+                            const dx = hit.x + 50;
+                            const dy = hit.y - slits[s];
+                            const r = Math.sqrt(dx * dx + dy * dy);
+                            const amp = 1 / Math.sqrt(1 + r / spread);
+                            re += amp * Math.cos(k * r);
+                            im += amp * Math.sin(k * r);
+                        }
+                        value = (re * re + im * im) * invN2;
+                    }
+                    const alpha = Math.min(1, value) ** 1.3 * 0.5;
+                    const idx = (j * fw + i) * 4;
+                    data[idx] = col.r;
+                    data[idx + 1] = col.g;
+                    data[idx + 2] = col.b;
+                    data[idx + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+                }
+            }
+            sctx.putImageData(img, 0, 0);
+        }
+
+        // Animated wavefronts: plane crests arriving, Huygens wavelets leaving.
+        function drawSlitWavelets() {
+            const barrierX = -50;
+            const col = slitsWaveColor();
+            const slits = getSlitPositionsScene();
+            const lambda = slitsLambdaWorld();
+            const phase = slitsWavePhase();
+            const maxR = lambda * SLITS_RINGS;
+            const scale = camera.fov / SLITS_DIST;
+            const halfSpan = clamp(1.5 * (H / 2) / Math.max(0.001, scale), 4, 60);
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Incoming plane wavefronts (blocked by the barrier).
+            for (let n = 0; n < SLITS_RINGS; n++) {
+                const wx = barrierX - (n + phase) * lambda;
+                const dist = (n + phase) * lambda;
+                const fade = 1 - dist / maxR;
+                if (fade <= 0) break;
+                const a = project(wx, halfSpan, 0);
+                const b = project(wx, -halfSpan, 0);
+                if (!a || !b) continue;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.07 + 0.28 * fade).toFixed(3)})`;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.quadraticCurveTo((a.x + b.x) / 2 - 14, (a.y + b.y) / 2, b.x, b.y);
+                ctx.stroke();
+            }
+
+            // Huygens wavelets spreading from every slit.
+            ctx.lineWidth = 1.4;
+            for (const slitY of slits) {
+                for (let n = 0; n < SLITS_RINGS; n++) {
+                    const r = (n + phase) * lambda;
+                    if (r < lambda * 0.35) continue;
+                    const fade = 1 - r / maxR;
+                    if (fade <= 0) break;
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.10 + 0.38 * fade).toFixed(3)})`;
+                    ctx.beginPath();
+                    let started = false;
+                    for (let a = -1.3; a <= 1.3; a += 0.055) {
+                        const wx = barrierX + r * Math.cos(a);
+                        const wy = slitY + r * Math.sin(a);
+                        if (wx < barrierX + 1.8) { started = false; continue; }
+                        const p = project(wx, wy, 0);
+                        if (!p || p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) {
+                            started = false;
+                            continue;
+                        }
+                        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+                        else ctx.lineTo(p.x, p.y);
+                    }
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawSlitsAnnotations() {
+            const barrierX = -50;
+            const slits = getSlitPositionsScene();
+            const halfSlit = getSlitWidthMm() * SCENE_UNITS_PER_MM / 2;
+            const col = slitsWaveColor();
+            const near = -15;
+            const wallLeft = project(barrierX - 2, 0, near);
+            const wallRight = project(barrierX + 2, 0, near);
+            if (!wallLeft || !wallRight) return;
+
+            ctx.save();
+            ctx.font = '11px system-ui';
+            ctx.textBaseline = 'middle';
+
+            // Slit tags: S1, S2, ...
+            for (let i = 0; i < slits.length; i++) {
+                const p = project(barrierX, slits[i], near);
+                if (!p) continue;
+                ctx.textAlign = 'right';
+                ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.85)`;
+                ctx.fillText(`S${i + 1}`, wallLeft.x - 12, p.y);
+            }
+
+            // Separation d between the outer slits.
+            if (slits.length > 1) {
+                const a = project(barrierX, slits[0], near);
+                const b = project(barrierX, slits[slits.length - 1], near);
+                if (a && b) {
+                    const x = wallLeft.x - 58;
+                    ctx.strokeStyle = 'rgba(190, 205, 240, 0.55)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, a.y);
+                    ctx.lineTo(x, b.y);
+                    ctx.moveTo(x - 5, a.y);
+                    ctx.lineTo(x + 5, a.y);
+                    ctx.moveTo(x - 5, b.y);
+                    ctx.lineTo(x + 5, b.y);
+                    ctx.stroke();
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = 'rgba(214, 226, 250, 0.9)';
+                    ctx.fillText(`d = ${(slits.length > 2 ? getSlitSeparationMm() * (slits.length - 1) : getSlitSeparationMm()).toFixed(2)} mm`,
+                        x - 9, (a.y + b.y) / 2);
+                }
+            }
+
+            // Slit width a, measured on the first opening.
+            const wTop = project(barrierX + 2, slits[0] - halfSlit, near);
+            const wBot = project(barrierX + 2, slits[0] + halfSlit, near);
+            if (wTop && wBot) {
+                const x = wallRight.x + 16;
+                ctx.strokeStyle = 'rgba(190, 205, 240, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, wTop.y);
+                ctx.lineTo(x, wBot.y);
+                ctx.moveTo(x - 4, wTop.y);
+                ctx.lineTo(x + 4, wTop.y);
+                ctx.moveTo(x - 4, wBot.y);
+                ctx.lineTo(x + 4, wBot.y);
+                ctx.stroke();
+                ctx.textAlign = 'left';
+                ctx.fillStyle = 'rgba(214, 226, 250, 0.85)';
+                ctx.fillText(`a = ${getSlitWidthMm().toFixed(2)} mm`, x + 8, (wTop.y + wBot.y) / 2);
+            }
+
+            // Wavelength bracket between two incoming crests.
+            const lambda = slitsLambdaWorld();
+            const c1 = project(barrierX - lambda * 5, 2, 0);
+            const c2 = project(barrierX - lambda * 6, 2, 0);
+            if (c1 && c2) {
+                const y = c1.y;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.7)`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(c2.x, y);
+                ctx.lineTo(c1.x, y);
+                ctx.moveTo(c2.x, y - 4);
+                ctx.lineTo(c2.x, y + 4);
+                ctx.moveTo(c1.x, y - 4);
+                ctx.lineTo(c1.x, y + 4);
+                ctx.stroke();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.9)`;
+                ctx.fillText('λ', (c1.x + c2.x) / 2, y - 11);
+            }
+
+            // Section captions, kept inside the band not covered by the panel.
+            const bounds = slitsSceneBounds();
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'rgba(130, 145, 185, 0.65)';
+            ctx.fillText('PLANE WAVES IN', 26, bounds.top + 14);
+            ctx.textAlign = 'right';
+            ctx.fillText('WAVELETS FROM EACH SLIT  →  TO SCREEN', W - 26, bounds.top + 14);
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'rgba(120, 135, 175, 0.6)';
+            ctx.fillText('Barrier close-up — wavefronts are enlarged, they are not to scale with d.', 26, bounds.bottom - 8);
+            ctx.restore();
+        }
+
+        // ==========================================
+        // "HOW IT HAPPENS" CLOSE-UP PANEL
+        // ==========================================
+
+        function slitsPanelGeometry() {
+            const r = panelRect;
+            const headerH = 34, footerH = 44, padX = 18;
+            const dh = r.h - headerH - footerH;
+            if (r.w < 260 || dh < 110) return null;
+
+            const dx = r.x + padX;
+            const dy = r.y + headerH;
+            const dw = r.w - padX * 2;
+            const cy = dy + dh / 2;
+            const barrierX = dx + Math.min(170, dw * 0.20);
+            const rightX = dx + dw - 16;
+            const D = rightX - barrierX;
+            const n = Math.max(1, params.numSlits);
+            const dMm = getSlitSeparationMm();
+            const aMm = getSlitWidthMm();
+
+            let dPx = clamp(dh * 0.38 * (dMm / 0.5), 20, dh * 0.70);
+            dPx = Math.min(dPx, (dh * 0.74) / Math.max(1, n - 1));
+            const aPx = clamp(dPx * (aMm / dMm), 3, dPx * 0.8);
+            const lambdaPx = clamp(0.042 * dh * (params.wavelength / 550), 8, 42);
+
+            const slits = [];
+            for (let i = 0; i < n; i++) slits.push(cy + (i - (n - 1) / 2) * dPx);
+
+            return {
+                dx: dx, dy: dy, dw: dw, dh: dh, cy: cy,
+                barrierX: barrierX, rightX: rightX, D: D,
+                dPx: dPx, aPx: aPx, lambdaPx: lambdaPx, slits: slits,
+                wallHalf: clamp(dw * 0.012, 6, 13)
+            };
+        }
+
+        const closeupField = { key: '', canvas: null };
+
+        function drawSlitsPanel() {
+            const r = panelRect;
+            if (r.w < 260 || r.h < 170) return;
+            const g = slitsPanelGeometry();
+            if (!g) return;
+
+            ctx.save();
+            roundRectPath(ctx, r.x, r.y, r.w, r.h, 16);
+            ctx.fillStyle = 'rgba(7, 9, 18, 0.93)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.22)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.clip();
+
+            // ---- header ----
+            const col = slitsWaveColor();
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.font = '600 12px system-ui';
+            ctx.fillStyle = 'rgba(190, 232, 255, 0.95)';
+            ctx.fillText('SLIT CLOSE-UP  ·  how the two slits build the fringes', r.x + 18, r.y + 18);
+
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'right';
+            ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
+            ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - 18, r.y + 18);
+
+            drawCloseupDiagram(g, col);
+            drawCloseupFooter(r, g);
+
+            ctx.restore();
+        }
+
+        function drawCloseupDiagram(g, col) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.dx, g.dy, g.dw, g.dh);
+            ctx.clip();
+
+            // ---- static interference field (bright fans / dark nodal lines) ----
+            const key = [
+                g.dx | 0, g.dy | 0, g.dw | 0, g.dh | 0,
+                g.dPx.toFixed(1), g.lambdaPx.toFixed(2), g.slits.length,
+                col.r, col.g, col.b
+            ].join('|');
+            if (closeupField.key !== key) {
+                buildCloseupField(g, col);
+                closeupField.key = key;
+            }
+            if (closeupField.canvas) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(closeupField.canvas, g.barrierX, g.dy, g.rightX - g.barrierX, g.dh);
+                ctx.restore();
+            }
+
+            const phase = slitsWavePhase();
+            const maxR = Math.hypot(g.D, g.dh * 0.75);
+
+            // ---- incoming plane wavefronts ----
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.dx, g.dy, g.barrierX - g.dx, g.dh);
+            ctx.clip();
+            ctx.lineWidth = 1.2;
+            for (let n = 0; n < 60; n++) {
+                const x = g.barrierX - (n + phase) * g.lambdaPx;
+                if (x < g.dx - 20) break;
+                const fade = 1 - (g.barrierX - x) / maxR;
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.08 + 0.3 * Math.max(0, fade)).toFixed(3)})`;
+                ctx.beginPath();
+                ctx.moveTo(x, g.dy);
+                ctx.quadraticCurveTo(x - 16, g.cy, x, g.dy + g.dh);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // ---- Huygens wavelets leaving each slit ----
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(g.barrierX, g.dy, g.rightX - g.barrierX, g.dh);
+            ctx.clip();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineWidth = 1.3;
+            const rings = Math.ceil(maxR / g.lambdaPx);
+            for (const sy of g.slits) {
+                for (let n = 0; n < rings; n++) {
+                    const rad = (n + phase) * g.lambdaPx;
+                    if (rad < g.lambdaPx * 0.3) continue;
+                    const fade = 1 - rad / maxR;
+                    if (fade <= 0) break;
+                    ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.06 + 0.26 * fade).toFixed(3)})`;
+                    ctx.beginPath();
+                    ctx.arc(g.barrierX, sy, rad, -1.35, 1.35);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+
+            // ---- barrier with the slits cut out ----
+            const bw = g.wallHalf;
+            const segments = [{ y1: g.dy, y2: g.slits[0] - g.aPx / 2 }];
+            for (let i = 0; i < g.slits.length - 1; i++) {
+                segments.push({ y1: g.slits[i] + g.aPx / 2, y2: g.slits[i + 1] - g.aPx / 2 });
+            }
+            segments.push({ y1: g.slits[g.slits.length - 1] + g.aPx / 2, y2: g.dy + g.dh });
+
+            for (const seg of segments) {
+                const h = seg.y2 - seg.y1;
+                if (h < 1) continue;
+                const grd = ctx.createLinearGradient(g.barrierX - bw, 0, g.barrierX + bw, 0);
+                grd.addColorStop(0, '#232842');
+                grd.addColorStop(0.45, '#4c5680');
+                grd.addColorStop(1, '#1b2036');
+                ctx.fillStyle = grd;
+                roundRectPath(ctx, g.barrierX - bw, seg.y1, bw * 2, h, Math.min(3, h / 2));
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(150, 170, 235, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // glowing slit mouths
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (const sy of g.slits) {
+                const grd = ctx.createRadialGradient(g.barrierX, sy, 0, g.barrierX, sy, Math.max(14, g.aPx * 2));
+                grd.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, 0.55)`);
+                grd.addColorStop(1, 'transparent');
+                ctx.fillStyle = grd;
+                ctx.fillRect(g.barrierX - 40, sy - 40, 80, 80);
+            }
+            ctx.restore();
+
+            // ---- bright-fringe directions (m = 0, ±1, ±2 ...) ----
+            // A single slit has no second source to interfere with, so it gets no
+            // fringe directions or bands.
+            ctx.save();
+            if (g.slits.length > 1) {
+                ctx.font = '10px system-ui';
+                ctx.textBaseline = 'middle';
+                ctx.setLineDash([5, 5]);
+                let lastLabel = -1e9;
+                for (let m = -6; m <= 6; m++) {
+                    const ratio = m * g.lambdaPx / g.dPx;
+                    if (Math.abs(ratio) > 0.99) continue;
+                    const yEnd = g.cy + g.D * Math.tan(Math.asin(ratio));
+                    if (yEnd < g.dy + 4 || yEnd > g.dy + g.dh - 4) continue;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(g.barrierX + bw, g.cy);
+                    ctx.lineTo(g.rightX, yEnd);
+                    ctx.stroke();
+                    if (Math.abs(yEnd - lastLabel) > 15) {
+                        lastLabel = yEnd;
+                        ctx.setLineDash([]);
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = 'rgba(226, 238, 255, 0.8)';
+                        ctx.fillText(`m=${m > 0 ? '+' : ''}${m}`, g.rightX - 6, yEnd);
+                        ctx.setLineDash([5, 5]);
+                    }
+                }
+                ctx.setLineDash([]);
+
+                // ---- the bands those directions paint on the screen ----
+                const stripW = 11;
+                for (let y = g.dy; y <= g.dy + g.dh; y += 1) {
+                    const rel = (y - g.cy);
+                    const pathDiff = g.dPx * rel / Math.sqrt(g.D * g.D + rel * rel);
+                    const inten = Math.pow(Math.cos(Math.PI * pathDiff / g.lambdaPx), 2);
+                    if (inten < 0.02) continue;
+                    ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b}, ${(0.12 + 0.8 * inten).toFixed(3)})`;
+                    ctx.fillRect(g.rightX, y, stripW, 1.2);
+                }
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(150, 168, 205, 0.75)';
+                ctx.save();
+                ctx.translate(g.rightX + stripW / 2, g.dy + 6);
+                ctx.fillText('screen', 0, 0);
+                ctx.restore();
+            }
+            ctx.restore();
+
+            // ---- separation dimension ----
+            if (g.slits.length > 1) {
+                const x = g.barrierX - bw - 34;
+                const y1 = g.slits[0], y2 = g.slits[g.slits.length - 1];
+                ctx.save();
+                ctx.strokeStyle = 'rgba(200, 214, 245, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y2);
+                ctx.moveTo(x - 5, y1);
+                ctx.lineTo(x + 5, y1);
+                ctx.moveTo(x - 5, y2);
+                ctx.lineTo(x + 5, y2);
+                ctx.stroke();
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.font = '10px system-ui';
+                ctx.fillStyle = 'rgba(220, 232, 255, 0.92)';
+                ctx.fillText(`d = ${getSlitSeparationMm().toFixed(2)} mm`, x - 8, (y1 + y2) / 2);
+                ctx.restore();
+            }
+
+            // ---- probe: path difference at a point ----
+            drawCloseupProbe(g, col);
+            ctx.restore();
+        }
+
+        function buildCloseupField(g, col) {
+            const cell = 3;
+            const rw = g.rightX - g.barrierX;
+            const fw = Math.max(1, Math.ceil(rw / cell));
+            const fh = Math.max(1, Math.ceil(g.dh / cell));
+            let cv = closeupField.canvas;
+            if (!cv || cv.width !== fw || cv.height !== fh) {
+                cv = document.createElement('canvas');
+                cv.width = fw;
+                cv.height = fh;
+                closeupField.canvas = cv;
+            }
+            const sctx = cv.getContext('2d');
+            const img = sctx.createImageData(fw, fh);
+            const data = img.data;
+            const k = 2 * Math.PI / g.lambdaPx;
+            const spread = g.lambdaPx * 45;
+            const invN2 = 1 / (g.slits.length * g.slits.length);
+
+            for (let j = 0; j < fh; j++) {
+                const py = g.dy + (j + 0.5) * cell;
+                const edgeFade = clamp(Math.min(j * cell, g.dh - j * cell) / 14, 0, 1);
+                for (let i = 0; i < fw; i++) {
+                    const px = g.barrierX + (i + 0.5) * cell;
+                    let re = 0, im = 0;
+                    for (let s = 0; s < g.slits.length; s++) {
+                        const dx = px - g.barrierX;
+                        const dy = py - g.slits[s];
+                        const r = Math.sqrt(dx * dx + dy * dy);
+                        const amp = 1 / Math.sqrt(1 + r / spread);
+                        re += amp * Math.cos(k * r);
+                        im += amp * Math.sin(k * r);
+                    }
+                    const value = (re * re + im * im) * invN2;
+                    const alpha = Math.min(1, value) ** 1.8 * 0.72 * edgeFade;
+                    const idx = (j * fw + i) * 4;
+                    data[idx] = col.r;
+                    data[idx + 1] = col.g;
+                    data[idx + 2] = col.b;
+                    data[idx + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+                }
+            }
+            sctx.putImageData(img, 0, 0);
+        }
+
+        function drawCloseupProbe(g, col) {
+            if (!closeupProbe) {
+                // Park the probe on the first order maximum so the readout shows
+                // something meaningful before the user touches anything.
+                const ratio = clamp(g.lambdaPx / g.dPx, -0.98, 0.98);
+                closeupProbe = {
+                    x: g.rightX - 30,
+                    y: g.cy + g.D * Math.tan(Math.asin(ratio))
+                };
+            }
+            const p = {
+                x: clamp(closeupProbe.x, g.barrierX + 6, g.rightX - 4),
+                y: clamp(closeupProbe.y, g.dy + 4, g.dy + g.dh - 4)
+            };
+
+            ctx.save();
+            ctx.setLineDash([3, 4]);
+            ctx.lineWidth = 1;
+            for (let i = 0; i < g.slits.length; i++) {
+                ctx.strokeStyle = `rgba(${col.r}, ${col.g}, ${col.b}, 0.5)`;
+                ctx.beginPath();
+                ctx.moveTo(g.barrierX, g.slits[i]);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+            ctx.moveTo(p.x - 9, p.y);
+            ctx.lineTo(p.x - 2, p.y);
+            ctx.moveTo(p.x + 2, p.y);
+            ctx.lineTo(p.x + 9, p.y);
+            ctx.stroke();
+
+            let line1 = 'path difference', line2 = '';
+            if (g.slits.length > 1) {
+                const r1 = Math.hypot(p.x - g.barrierX, p.y - g.slits[0]);
+                const r2 = Math.hypot(p.x - g.barrierX, p.y - g.slits[g.slits.length - 1]);
+                const delta = Math.abs(r2 - r1) / g.lambdaPx;
+                const nearest = Math.round(delta);
+                const bright = Math.abs(delta - nearest) < 0.25;
+                line1 = `Δ = ${delta.toFixed(2)} λ  (${nearest} λ)`;
+                line2 = bright ? 'crests arrive together → bright fringe'
+                    : 'crest meets trough → dark fringe';
+            } else {
+                line1 = 'one slit only';
+                line2 = 'no interference — single broad lobe';
+            }
+
+            ctx.font = '10px system-ui';
+            const boxW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 16;
+            let bx = p.x + 14;
+            if (bx + boxW > g.dx + g.dw) bx = p.x - 14 - boxW;
+            const by = clamp(p.y - 26, g.dy + 2, g.dy + g.dh - 34);
+            ctx.fillStyle = 'rgba(8, 12, 24, 0.88)';
+            roundRectPath(ctx, bx, by, boxW, 32, 6);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(232, 244, 255, 0.95)';
+            ctx.fillText(line1, bx + 8, by + 10);
+            ctx.fillStyle = 'rgba(160, 178, 214, 0.9)';
+            ctx.fillText(line2, bx + 8, by + 23);
+            ctx.restore();
+        }
+
+        function drawCloseupFooter(r, g) {
+            const lambdaMm = getWavelengthMm();
+            const dMm = getSlitSeparationMm();
+            const LMm = getScreenDistanceMm();
+            const pxPerMm = g.dh / (2 * SCREEN_HALF_RANGE_MM);
+            const exaggeration = g.lambdaPx / Math.max(1e-9, lambdaMm * pxPerMm);
+            const fringeMm = params.numSlits > 1 ? (lambdaMm * LMm / dMm) : 0;
+            const realFringes = fringeMm > 0 ? Math.round(2 * SCREEN_HALF_RANGE_MM / fringeMm) : 0;
+
+            ctx.font = '10.5px system-ui';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'rgba(146, 162, 200, 0.85)';
+            ctx.fillText(
+                `Wavefronts are drawn ×${formatFactor(exaggeration)} too big: λ = ${lambdaMm.toFixed(5)} mm is ${Math.round(dMm / lambdaMm).toLocaleString()}× smaller than the ${dMm.toFixed(2)} mm slit gap, so it cannot be drawn to scale next to it.`,
+                r.x + 18, r.y + r.h - 34);
+            ctx.fillStyle = 'rgba(120, 136, 175, 0.8)';
+            ctx.fillText(params.numSlits > 1
+                ? `Real screen at L = ${(LMm / 1000).toFixed(2)} m: Δy = λL/d = ${fringeMm.toFixed(2)} mm → about ${realFringes} bright fringes across the visible screen. Click anywhere in the picture to measure a path difference.`
+                : `One slit: no fringes, just a single diffraction lobe about ${(2 * lambdaMm * LMm / getSlitWidthMm()).toFixed(2)} mm wide at the screen.`,
+                r.x + 18, r.y + r.h - 19);
+        }
+
+        function formatFactor(value) {
+            if (value >= 1e6) return (value / 1e6).toFixed(1) + ' million';
+            if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+            return Math.round(value).toLocaleString();
+        }
+
+        function closeupHit(x, y) {
+            if (!params.slitsPanel) return false;
+            const g = slitsPanelGeometry();
+            if (!g) return false;
+            return x >= g.dx - 6 && x <= g.rightX + 16 && y >= g.dy && y <= g.dy + g.dh;
+        }
+
+        // ==========================================
+        // INTENSITY GRAPH
+        // ==========================================
+        
+        function drawIntensityGraph() {
+            const gw = graphCanvas.clientWidth;
+            const gh = graphCanvas.clientHeight;
+            if (gw < 40 || gh < 60) return;
+
+            graphCtx.clearRect(0, 0, gw, gh);
+            graphCtx.fillStyle = '#ffffff';
+            graphCtx.fillRect(0, 0, gw, gh);
+
+            const margin = { left: 48, right: 10, top: 10, bottom: 39 };
+            const plotLeft = margin.left;
+            const plotRight = gw - margin.right;
+            const plotTop = margin.top;
+            const plotBottom = gh - margin.bottom;
+            const plotWidth = plotRight - plotLeft;
+            const plotHeight = plotBottom - plotTop;
+            if (plotWidth <= 0 || plotHeight <= 0) return;
+
+            const xForPosition = positionMm =>
+                plotLeft + ((positionMm + SCREEN_HALF_RANGE_MM) / (2 * SCREEN_HALF_RANGE_MM)) * plotWidth;
+            const yForIntensity = relativeIntensity =>
+                plotBottom - clamp(relativeIntensity, 0, 1) * plotHeight;
+
+            // Light graph-paper grid and explicit textbook axes.
+            graphCtx.font = '9px system-ui, sans-serif';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.textAlign = 'right';
+            for (const value of [0, 0.25, 0.5, 0.75, 1]) {
+                const y = yForIntensity(value);
+                graphCtx.strokeStyle = value === 0 ? '#56647a' : '#e4e9f0';
+                graphCtx.lineWidth = value === 0 ? 1.1 : 0.8;
+                graphCtx.beginPath();
+                graphCtx.moveTo(plotLeft, y);
+                graphCtx.lineTo(plotRight, y);
+                graphCtx.stroke();
+                graphCtx.fillStyle = '#526078';
+                graphCtx.fillText(value.toFixed(value === 0 || value === 1 ? 0 : 2).replace(/0+$/, '').replace(/\.$/, ''), plotLeft - 6, y);
+            }
+
+            const xTicks = [-SCREEN_HALF_RANGE_MM, -SCREEN_HALF_RANGE_MM / 2, 0, SCREEN_HALF_RANGE_MM / 2, SCREEN_HALF_RANGE_MM];
+            graphCtx.textBaseline = 'top';
+            graphCtx.textAlign = 'center';
+            for (const position of xTicks) {
+                const x = xForPosition(position);
+                graphCtx.strokeStyle = position === 0 ? '#c6cfdb' : '#e8edf3';
+                graphCtx.lineWidth = position === 0 ? 1 : 0.75;
+                graphCtx.beginPath();
+                graphCtx.moveTo(x, plotTop);
+                graphCtx.lineTo(x, plotBottom);
+                graphCtx.stroke();
+                graphCtx.fillStyle = '#526078';
+                graphCtx.fillText(position.toFixed(position % 1 === 0 ? 0 : 1), x, plotBottom + 4);
+            }
+
+            // Observed particle hits: a normalized histogram on the same I/I₀ scale.
+            let maxBin = 0;
+            for (const count of intensityBins) maxBin = Math.max(maxBin, count);
+            if (maxBin > 0) {
+                const binWidth = plotWidth / intensityBins.length;
+                graphCtx.fillStyle = 'rgba(225, 142, 43, 0.46)';
+                graphCtx.strokeStyle = 'rgba(181, 101, 22, 0.36)';
+                graphCtx.lineWidth = 0.55;
+                for (let i = 0; i < intensityBins.length; i++) {
+                    if (intensityBins[i] === 0) continue;
+                    const height = (intensityBins[i] / maxBin) * plotHeight;
+                    const x = plotLeft + i * binWidth;
+                    graphCtx.fillRect(x + 0.2, plotBottom - height, Math.max(0.7, binWidth - 0.45), height);
+                    graphCtx.strokeRect(x + 0.2, plotBottom - height, Math.max(0.7, binWidth - 0.45), height);
+                }
+            }
+
+            // Ideal Fraunhofer intensity, normalized to the central maximum I₀.
+            const centralIntensity = intensityAtSceneY(0);
+            if (centralIntensity > 0) {
+                graphCtx.beginPath();
+                for (let pixel = 0; pixel <= plotWidth; pixel += 0.5) {
+                    const positionMm = ((pixel / plotWidth) - 0.5) * 2 * SCREEN_HALF_RANGE_MM;
+                    const relativeIntensity = clamp(
+                        calculateIntensity(
+                            positionMm,
+                            getWavelengthMm(),
+                            getSlitSeparationMm(),
+                            getSlitWidthMm(),
+                            getScreenDistanceMm(),
+                            params.numSlits,
+                            params.detector,
+                            params.coherence / 100
+                        ) / centralIntensity,
+                        0,
+                        1
+                    );
+                    const x = plotLeft + pixel;
+                    const y = yForIntensity(relativeIntensity);
+                    if (pixel === 0) graphCtx.moveTo(x, y);
+                    else graphCtx.lineTo(x, y);
+                }
+                graphCtx.strokeStyle = '#174f85';
+                graphCtx.lineWidth = 2.25;
+                graphCtx.lineJoin = 'round';
+                graphCtx.lineCap = 'round';
+                graphCtx.stroke();
+            }
+
+            // Strong, clearly visible axes and textbook labels.
+            graphCtx.strokeStyle = '#526078';
+            graphCtx.lineWidth = 1.1;
+            graphCtx.beginPath();
+            graphCtx.moveTo(plotLeft, plotTop);
+            graphCtx.lineTo(plotLeft, plotBottom);
+            graphCtx.lineTo(plotRight, plotBottom);
+            graphCtx.stroke();
+
+            graphCtx.fillStyle = '#334155';
+            graphCtx.font = '9px system-ui, sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'bottom';
+            graphCtx.fillText('Position on screen, y (mm)', (plotLeft + plotRight) / 2, gh - 1);
+
+            graphCtx.save();
+            graphCtx.translate(10, (plotTop + plotBottom) / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.fillText('Relative intensity, I / I₀', 0, 0);
+            graphCtx.restore();
+        }
+
+        // ==========================================
+        // UPDATE LOOP
+        // ==========================================
+        
+        function update() {
+            if (paused) return;
+            
+            const dt = 0.016 * params.speed;
+            time += dt;
+            
+            // Emit particles
+            const rate = params.singleParticle ? 0.5 : params.emissionRate;
+            const particlesToEmit = rate * dt;
+            
+            if (params.singleParticle) {
+                // Only emit if no active particles
+                const activeCount = particles.filter(p => p.alive).length;
+                if (activeCount === 0 && Math.random() < particlesToEmit) {
+                    particles.push(createParticle());
+                }
+            } else {
+                // Fractional emission with accumulator
+                emissionAccumulator += particlesToEmit;
+                while (emissionAccumulator >= 1) {
+                    if (particles.length < maxParticles) {
+                        particles.push(createParticle());
+                    }
+                    emissionAccumulator -= 1;
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                updateParticle(particles[i], dt);
+                if (!particles[i].alive) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('particleCount').textContent = `${particles.length} active`;
+            document.getElementById('statFired').textContent = totalFired.toLocaleString();
+            document.getElementById('statHits').textContent = totalHits.toLocaleString();
+
+            const buildUp = document.getElementById('statBuild');
+            if (buildUp) {
+                buildUp.textContent = totalHits === 0
+                    ? 'Awaiting impact'
+                    : patternBuildProgress >= 1
+                        ? 'Developed'
+                        : `Developing ${Math.round(patternBuildProgress * 100)}%`;
+            }
+
+            const fringeSpacingMm = getWavelengthMm() * getScreenDistanceMm() / getSlitSeparationMm();
+            const singleSlitWidthMm = 2 * getWavelengthMm() * getScreenDistanceMm() / getSlitWidthMm();
+            const isSingleSlit = params.numSlits === 1;
+            document.getElementById('statFringeLabel').textContent = isSingleSlit
+                ? 'Central maximum width'
+                : 'Fringe spacing, Δy';
+            document.getElementById('statFringe').textContent = `${(isSingleSlit ? singleSlitWidthMm : fringeSpacingMm).toFixed(2)} mm`;
+            document.getElementById('equationMain').textContent = isSingleSlit
+                ? 'Central width ≈ 2λL / a'
+                : 'Δy ≈ λL / d';
+            document.getElementById('equationNote').textContent = isSingleSlit
+                ? 'Width between the first dark minima of the single-slit envelope.'
+                : 'Spacing between adjacent bright fringes for small angles.';
+            document.getElementById('statDeBroglie').textContent = `${params.wavelength} nm`;
+            document.getElementById('statWavelengthLabel').textContent = params.particleType === 'electron'
+                ? 'de Broglie λ'
+                : 'Wavelength, λ';
+            document.getElementById('wavelengthLabel').textContent = params.particleType === 'electron'
+                ? 'Matter-wave wavelength'
+                : 'Wavelength';
+
+            const patternLabel = params.numSlits === 1
+                ? 'Single-slit diffraction'
+                : (params.detector || params.coherence === 0)
+                    ? 'Incoherent slits'
+                    : params.coherence < 100
+                        ? 'Partial interference'
+                        : 'Interference';
+            document.getElementById('statPattern').textContent = patternLabel;
+        }
+
+        // Clear hits whenever the physical setup changes so the graph never mixes
+        // data collected under different wavelengths or slit geometries.
+        function resetExperiment() {
+            particles = [];
+            screenHits = [];
+            intensityBins = new Float32Array(200);
+            clearPatternExposure();
+            totalFired = 0;
+            totalHits = 0;
+            emissionAccumulator = 0;
+            updateUI();
+            drawIntensityGraph();
+        }
+
+        // ==========================================
+        // MAIN LOOP
+        // ==========================================
+        
+        function gameLoop() {
+            frameCount++;
+            
+            // FPS
+            const now = performance.now();
+            if (now - lastFpsTime > 500) {
+                fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
+                document.getElementById('fpsCounter').textContent = fps + ' FPS';
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+            
+            // Smooth camera
+            camera.rotX += (camera.targetRotX - camera.rotX) * 0.08;
+            camera.rotY += (camera.targetRotY - camera.rotY) * 0.08;
+            camera.x += (camera.targetX - camera.x) * 0.08;
+            camera.y += (camera.targetY - camera.y) * 0.08;
+            camera.z += (camera.targetZ - camera.z) * 0.08;
+            camera.fov += (camera.targetFov - camera.fov) * 0.08;
+            camera.shiftY += (camera.targetShiftY - camera.shiftY) * 0.08;
+            
+            update();
+            drawScene();
+            
+            if (frameCount % 5 === 0) {
+                drawIntensityGraph();
+                updateUI();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ==========================================
+        // EVENT HANDLERS
+        // ==========================================
+        
+        // Mouse drag for camera rotation
+        canvas.addEventListener('mousedown', (e) => {
+            if (closeupHit(e.clientX, e.clientY)) {
+                closeupProbe = { x: e.clientX, y: e.clientY };
+                closeupDrag = true;
+                return;
+            }
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (closeupDrag) {
+                closeupProbe = { x: e.clientX, y: e.clientY };
+                return;
+            }
+            if (params.slitsPanel) {
+                canvas.style.cursor = isDragging
+                    ? 'grabbing'
+                    : (closeupHit(e.clientX, e.clientY) ? 'crosshair' : 'grab');
+            } else if (canvas.style.cursor !== '') {
+                canvas.style.cursor = '';
+            }
+            if (!isDragging) return;
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            camera.targetRotY += dx * 0.005;
+            camera.targetRotX += dy * 0.005;
+            camera.targetRotX = Math.max(-1.2, Math.min(0.5, camera.targetRotX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mouseup', () => { isDragging = false; closeupDrag = false; });
+        canvas.addEventListener('mouseleave', () => { isDragging = false; closeupDrag = false; });
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            if (closeupHit(e.touches[0].clientX, e.touches[0].clientY)) {
+                closeupProbe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                closeupDrag = true;
+                e.preventDefault();
+                return;
+            }
+            isDragging = true;
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (closeupDrag && e.touches.length === 1) {
+                closeupProbe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                return;
+            }
+            if (!isDragging || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - lastMouseX;
+            const dy = e.touches[0].clientY - lastMouseY;
+            camera.targetRotY += dx * 0.005;
+            camera.targetRotX += dy * 0.005;
+            camera.targetRotX = Math.max(-1.2, Math.min(0.5, camera.targetRotX));
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => { isDragging = false; closeupDrag = false; });
+
+        // Scroll zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (viewMode === 'slits') {
+                slitsZoom = clamp(slitsZoom * (1 - e.deltaY * 0.0015), 0.3, 3.5);
+                updateSlitsCamera();
+                return;
+            }
+            camera.targetZ += e.deltaY * 0.5;
+            camera.targetZ = Math.max(-400, Math.min(-80, camera.targetZ));
+        }, { passive: false });
+
+        // Expand/collapse either panel independently.
+        document.querySelectorAll('.panel-collapse').forEach(button => {
+            button.addEventListener('click', () => {
+                const panel = button.closest('.control-panel, .info-panel');
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                panel.classList.toggle('collapsed', expanded);
+                button.setAttribute('aria-expanded', String(!expanded));
+                const panelName = panel.id === 'controlPanel' ? 'experiment options' : 'experiment data';
+                button.setAttribute('aria-label', `${expanded ? 'Expand' : 'Minimize'} ${panelName}`);
+                button.title = `${expanded ? 'Expand' : 'Minimize'} ${panelName}`;
+                button.textContent = expanded ? '+' : '−';
+                requestAnimationFrame(() => {
+                    updateLayout();
+                    if (viewMode === 'slits') updateSlitsCamera();
+                    if (!expanded && panel.id === 'infoPanel') {
+                        resize();
+                        drawIntensityGraph();
+                    }
+                });
+            });
+        });
+
+        // Particle type buttons
+        document.querySelectorAll('.particle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.particle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                params.particleType = btn.dataset.type;
+                document.getElementById('physicsDesc').innerHTML = particleColors[params.particleType].desc;
+                const rgb = wavelengthToRGB(params.wavelength);
+                document.getElementById('wavelength').style.accentColor = params.particleType === 'photon'
+                    ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`
+                    : '#7b2ffc';
+                resetExperiment();
+            });
+        });
+
+        function updateSlitWidthLimit() {
+            const widthSlider = document.getElementById('slitWidth');
+            const maxWidth = Math.max(Number(widthSlider.min), Math.floor(params.slitSeparation * 0.8));
+            widthSlider.max = String(maxWidth);
+            if (params.slitWidth > maxWidth) {
+                params.slitWidth = maxWidth;
+                widthSlider.value = String(maxWidth);
+                document.getElementById('slitWidthVal').textContent = (maxWidth * 0.01).toFixed(2) + ' mm';
+            }
+        }
+
+        // Sliders
+        function setupSlider(id, param, format, resetOnChange = false) {
+            const slider = document.getElementById(id);
+            const display = document.getElementById(id + 'Val');
+            slider.addEventListener('input', () => {
+                const val = parseFloat(slider.value);
+                params[param] = param === 'speed' ? val / 10 : val;
+                display.textContent = format(val);
+                if (id === 'slitSeparation') updateSlitWidthLimit();
+                if (viewMode === 'slits') updateSlitsCamera();
+                if (resetOnChange) resetExperiment();
+            });
+        }
+
+        setupSlider('wavelength', 'wavelength', v => v + ' nm', true);
+        setupSlider('emissionRate', 'emissionRate', v => v + '/s');
+        setupSlider('coherence', 'coherence', v => v + '%', true);
+        setupSlider('slitWidth', 'slitWidth', v => (v * 0.01).toFixed(2) + ' mm', true);
+        setupSlider('slitSeparation', 'slitSeparation', v => (v * 0.01).toFixed(2) + ' mm', true);
+        setupSlider('screenDistance', 'screenDistance', v => (v / 60).toFixed(2) + ' m', true);
+        setupSlider('numSlits', 'numSlits', v => v, true);
+        setupSlider('speed', 'speed', v => (v / 10).toFixed(1) + '×');
+        updateSlitWidthLimit();
+
+        // Update wavelength slider color
+        document.getElementById('wavelength').addEventListener('input', function() {
+            if (params.particleType === 'photon') {
+                const rgb = wavelengthToRGB(parseInt(this.value));
+                this.style.accentColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            }
+        });
+
+        // Toggles
+        function setupToggle(id, param) {
+            document.getElementById(id).addEventListener('change', function() {
+                params[param] = this.checked;
+            });
+        }
+
+        setupToggle('glowEffects', 'glowEffects');
+        setupToggle('trails', 'trails');
+        setupToggle('predictedPattern', 'predictedPattern');
+
+        // The close-up panel re-frames the camera, so re-run the framing whenever
+        // it is switched on or off.
+        document.getElementById('slitsPanel').addEventListener('change', function () {
+            params.slitsPanel = this.checked;
+            closeupProbe = null;
+            updateLayout();
+            if (viewMode === 'slits') updateSlitsCamera();
+        });
+
+        // Action buttons
+        document.getElementById('resetBtn').addEventListener('click', resetExperiment);
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            screenHits = [];
+            intensityBins = new Float32Array(200);
+            clearPatternExposure();
+            totalHits = 0;
+            drawIntensityGraph();
+            updateUI();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            paused = !paused;
+            this.textContent = paused ? '▶ Resume' : '⏸ Pause';
+        });
+
+        // View buttons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                viewMode = btn.dataset.view;
+
+                switch (btn.dataset.view) {
+                    case 'perspective':
+                        camera.targetX = 0;
+                        camera.targetRotX = -0.35;
+                        camera.targetRotY = -0.4;
+                        camera.targetY = 80;
+                        camera.targetZ = -200;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
+                        break;
+                    case 'top':
+                        camera.targetX = 0;
+                        camera.targetRotX = -1.15;
+                        camera.targetRotY = 0;
+                        camera.targetY = 250;
+                        camera.targetZ = -50;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
+                        break;
+                    case 'side':
+                        camera.targetX = 0;
+                        camera.targetRotX = 0;
+                        camera.targetRotY = 0;
+                        camera.targetY = 0;
+                        camera.targetZ = -250;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
+                        break;
+                    case 'screen':
+                        camera.targetX = 0;
+                        camera.targetRotX = -0.1;
+                        camera.targetRotY = -1.5;
+                        camera.targetY = 0;
+                        camera.targetZ = -100;
+                        camera.targetFov = 600;
+                        camera.targetShiftY = 0;
+                        break;
+                    case 'slits':
+                        // Park the camera on the barrier and show the schematic.
+                        slitsZoom = 1;
+                        params.slitsPanel = true;
+                        document.getElementById('slitsPanel').checked = true;
+                        closeupProbe = null;
+                        updateLayout();
+                        updateSlitsCamera();
+                        break;
+                }
+            });
+        });
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        
+        // Set initial wavelength color
+        const initRgb = wavelengthToRGB(550);
+        document.getElementById('wavelength').style.accentColor = `rgb(${initRgb.r}, ${initRgb.g}, ${initRgb.b})`;
+        
+        // Set initial physics description
+        document.getElementById('physicsDesc').innerHTML = particleColors.photon.desc;
+
+        // Hide loading screen
+        setTimeout(() => {
+            document.getElementById('loadingScreen').classList.add('hidden');
+            gameLoop();
+        }, 1500);
+    </script>
+</body>
+</html>

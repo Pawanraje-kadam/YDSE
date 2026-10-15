@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/YDSE",
+      "destination": "/YDSE.html"
+    },
+    {
+      "source": "/ydse",
+      "destination": "/YDSE.html"
+    }
+  ]
+}
