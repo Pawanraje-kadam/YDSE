@@ -628,6 +628,23 @@
             background: rgba(0, 212, 255, 0.1);
         }
 
+        /* Collapsed: the toggle is the only control left, so make it read as
+           "open this panel" instead of a dimmed minus. */
+        .control-panel.collapsed .panel-collapse,
+        .info-panel.collapsed .panel-collapse {
+            border-color: rgba(0, 212, 255, 0.42);
+            background: rgba(0, 212, 255, 0.12);
+            box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+            color: #eafcff;
+            font-size: 1.45em;
+            font-weight: 500;
+        }
+
+        .control-panel.collapsed .panel-eyebrow,
+        .info-panel.collapsed .panel-eyebrow {
+            color: #8fa0c0;
+        }
+
         .panel-collapse:focus-visible,
         .action-btn:focus-visible,
         .view-btn:focus-visible,
@@ -900,6 +917,9 @@
             .panel-heading { margin-bottom: 6px; }
             .bottom-bar { display: flex; bottom: calc(41vh + 20px); }
             .bottom-bar .view-btn:not(.view-btn-slits) { display: none; }
+            /* Panels start minimized: sit the bar just above the short heading
+               card instead of floating where an expanded panel used to be. */
+            .control-panel.collapsed ~ .bottom-bar { bottom: 84px; }
         }
 
     </style>
@@ -926,14 +946,14 @@
         </div>
     </div>
 
-    <!-- Control Panel -->
-    <div class="control-panel" id="controlPanel">
+    <!-- Control Panel — starts minimized; the + toggle opens it -->
+    <div class="control-panel collapsed" id="controlPanel">
         <div class="panel-heading">
             <div class="panel-heading-copy">
                 <span class="panel-eyebrow">Set up the apparatus</span>
                 <h2><span class="icon">⚙</span>Experiment options</h2>
             </div>
-            <button class="panel-collapse" type="button" aria-controls="controlPanelContent" aria-expanded="true" aria-label="Minimize experiment options" title="Minimize experiment options">−</button>
+            <button class="panel-collapse" type="button" aria-controls="controlPanelContent" aria-expanded="false" aria-label="Expand experiment options" title="Expand experiment options">+</button>
         </div>
         <div class="panel-content" id="controlPanelContent">
         <!-- Particle Type -->
@@ -1052,14 +1072,14 @@
         </div>
     </div>
 
-    <!-- Experiment data and textbook-style intensity graph -->
-    <div class="info-panel" id="infoPanel">
+    <!-- Experiment data and textbook-style intensity graph — starts minimized too -->
+    <div class="info-panel collapsed" id="infoPanel">
         <div class="panel-heading">
             <div class="panel-heading-copy">
                 <span class="panel-eyebrow">Live results</span>
                 <h2><span class="icon">📊</span>Experiment data</h2>
             </div>
-            <button class="panel-collapse" type="button" aria-controls="experimentDataContent" aria-expanded="true" aria-label="Minimize experiment data" title="Minimize experiment data">−</button>
+            <button class="panel-collapse" type="button" aria-controls="experimentDataContent" aria-expanded="false" aria-label="Expand experiment data" title="Expand experiment data">+</button>
         </div>
         <div class="panel-content" id="experimentDataContent">
             <div class="stat-row">
@@ -2838,9 +2858,11 @@
 
         function slitsPanelGeometry() {
             const r = panelRect;
-            const headerH = params.slitsPanelFullscreen ? 0 : 34;
-            const footerH = params.slitsPanelFullscreen ? 0 : 44;
-            const padX = params.slitsPanelFullscreen ? 0 : 18;
+            // Full screen keeps slimmer bands so the diagram edge never runs
+            // under the caption / legend / hint lines, which are always shown.
+            const headerH = params.slitsPanelFullscreen ? 54 : 34;
+            const footerH = params.slitsPanelFullscreen ? 30 : 44;
+            const padX = 18;
             const dh = r.h - headerH - footerH;
             if (r.w < 260 || dh < 110) return null;
 
@@ -2888,18 +2910,43 @@
             ctx.stroke();
             ctx.clip();
 
-            // ---- header ----
+            // ---- header ---- (kept in full screen too: the close-up needs its
+            // own caption, otherwise the labels below have no context)
             const col = slitsWaveColor();
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'left';
+            const narrow = r.w < 700;
             ctx.font = '600 12px system-ui';
             ctx.fillStyle = 'rgba(190, 232, 255, 0.95)';
-            if (!params.slitsPanelFullscreen) ctx.fillText('SLIT CLOSE-UP  ·  how the two slits build the fringes', r.x + 18, r.y + 18);
+            const title = narrow
+                ? 'SLIT CLOSE-UP'
+                : 'SLIT CLOSE-UP  ·  how the two slits build the fringes';
+            ctx.fillText(clipText(title, r.w - 36 - (narrow ? 0 : 250)), r.x + 18, r.y + 18);
 
-            ctx.font = '10px system-ui';
-            ctx.textAlign = 'right';
-            ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
-            if (!params.slitsPanelFullscreen) ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - 18, r.y + 18);
+            if (!narrow) {
+                ctx.font = '10px system-ui';
+                ctx.textAlign = 'right';
+                ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
+                ctx.fillText('crest + crest → bright      crest + trough → dark', r.x + r.w - 18, r.y + 18);
+            }
+
+            // The full-screen view has no footer, so it repeats the two things the
+            // footer carries: the "not to scale" caveat and how to use the probe.
+            if (params.slitsPanelFullscreen) {
+                const pxPerMm = g.dh / (2 * SCREEN_HALF_RANGE_MM);
+                const exaggeration = g.lambdaPx / Math.max(1e-9, getWavelengthMm() * pxPerMm);
+                ctx.textAlign = 'left';
+                ctx.fillStyle = 'rgba(140, 156, 194, 0.78)';
+                const scaleNote = narrow
+                    ? `Not to scale: wavefronts drawn ×${formatFactor(exaggeration)} too big.`
+                    : `Wavefronts are drawn ×${formatFactor(exaggeration)} too big — λ is far smaller than the slit gap, so the angles are schematic.`;
+                ctx.fillText(clipText(scaleNote, r.w - 36), r.x + 18, r.y + 34);
+                ctx.fillStyle = 'rgba(150, 168, 205, 0.8)';
+                const hint = narrow
+                    ? 'Drag to move the marker and measure a path difference.'
+                    : 'Click or drag anywhere in the picture to move the marker and measure a path difference.';
+                ctx.fillText(clipText(hint, r.w - 36), r.x + 18, r.y + r.h - 12);
+            }
 
             drawCloseupDiagram(g, col);
             if (!params.slitsPanelFullscreen) drawCloseupFooter(r, g);
@@ -3014,6 +3061,7 @@
             // fringe directions or bands.
             ctx.save();
             if (g.slits.length > 1) {
+                const probePoint = closeupProbePoint(g);
                 ctx.font = '10px system-ui';
                 ctx.textBaseline = 'middle';
                 ctx.setLineDash([5, 5]);
@@ -3029,12 +3077,14 @@
                     ctx.moveTo(g.barrierX + bw, g.cy);
                     ctx.lineTo(g.rightX, yEnd);
                     ctx.stroke();
-                    if (Math.abs(yEnd - lastLabel) > 15) {
+                    // Do not stack a fringe label under the marker: the readout
+                    // already names the order it is sitting on.
+                    if (Math.abs(yEnd - lastLabel) > 15 && Math.abs(yEnd - probePoint.y) > 14) {
                         lastLabel = yEnd;
                         ctx.setLineDash([]);
                         ctx.textAlign = 'right';
                         ctx.fillStyle = 'rgba(226, 238, 255, 0.8)';
-                        if (!params.slitsPanelFullscreen) ctx.fillText(`m=${m > 0 ? '+' : ''}${m}`, g.rightX - 6, yEnd);
+                        ctx.fillText(`m=${m > 0 ? '+' : ''}${m}`, g.rightX - 6, yEnd);
                         ctx.setLineDash([5, 5]);
                     }
                 }
@@ -3053,8 +3103,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillStyle = 'rgba(150, 168, 205, 0.75)';
                 ctx.save();
-                ctx.translate(g.rightX + stripW / 2, g.dy + 6);
-                if (!params.slitsPanelFullscreen) ctx.fillText('screen', 0, 0);
+                ctx.fillText('screen', g.rightX + stripW / 2, g.dy + g.dh + 12);
                 ctx.restore();
             }
             ctx.restore();
@@ -3074,11 +3123,15 @@
                 ctx.moveTo(x - 5, y2);
                 ctx.lineTo(x + 5, y2);
                 ctx.stroke();
-                ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
                 ctx.font = '10px system-ui';
                 ctx.fillStyle = 'rgba(220, 232, 255, 0.92)';
-                if (!params.slitsPanelFullscreen) ctx.fillText(`d = ${getSlitSeparationMm().toFixed(2)} mm`, x - 8, (y1 + y2) / 2);
+                const dLabel = `d = ${getSlitSeparationMm().toFixed(2)} mm`;
+                // Keep the label inside the panel: in a very narrow panel there
+                // is no room left of the dimension line.
+                const dLabelX = Math.max(g.dx + 4 + ctx.measureText(dLabel).width, x - 8);
+                ctx.textAlign = 'right';
+                ctx.fillText(dLabel, dLabelX, (y1 + y2) / 2);
                 ctx.restore();
             }
 
@@ -3132,20 +3185,29 @@
             sctx.putImageData(img, 0, 0);
         }
 
-        function drawCloseupProbe(g, col) {
+        // Where the probe sits right now, in canvas pixels. Kept clear of the
+        // screen strip on the right so the readout box fits beside the marker.
+        function closeupProbePoint(g) {
             if (!closeupProbe) {
-                // Park the probe on the first order maximum so the readout shows
-                // something meaningful before the user touches anything.
+                // Park the probe on the first order maximum (m = ±1) so the
+                // readout shows something meaningful before the user touches
+                // anything. The offset is taken from the parked x, so the
+                // measured path difference comes out as exactly 1.00 λ.
+                const parkX = g.rightX - 20;
                 const ratio = clamp(g.lambdaPx / g.dPx, -0.98, 0.98);
                 closeupProbe = {
-                    x: g.rightX - 30,
-                    y: g.cy + g.D * Math.tan(Math.asin(ratio))
+                    x: parkX,
+                    y: g.cy + (parkX - g.barrierX) * Math.tan(Math.asin(ratio))
                 };
             }
-            const p = {
-                x: clamp(closeupProbe.x, g.barrierX + 6, g.rightX - 4),
+            return {
+                x: clamp(closeupProbe.x, g.barrierX + 6, g.rightX - 20),
                 y: clamp(closeupProbe.y, g.dy + 4, g.dy + g.dh - 4)
             };
+        }
+
+        function drawCloseupProbe(g, col) {
+            const p = closeupProbePoint(g);
 
             ctx.save();
             ctx.setLineDash([3, 4]);
@@ -3169,39 +3231,111 @@
             ctx.lineTo(p.x + 9, p.y);
             ctx.stroke();
 
-            let line1 = 'path difference', line2 = '';
-            if (g.slits.length > 1) {
-                const r1 = Math.hypot(p.x - g.barrierX, p.y - g.slits[0]);
-                const r2 = Math.hypot(p.x - g.barrierX, p.y - g.slits[g.slits.length - 1]);
-                const delta = Math.abs(r2 - r1) / g.lambdaPx;
-                const nearest = Math.round(delta);
-                const bright = Math.abs(delta - nearest) < 0.25;
-                line1 = `Δ = ${delta.toFixed(2)} λ  (${nearest} λ)`;
-                line2 = bright ? 'crests arrive together → bright fringe'
-                    : 'crest meets trough → dark fringe';
-            } else {
-                line1 = 'one slit only';
-                line2 = 'no interference — single broad lobe';
-            }
+            // ---- readout -------------------------------------------------------
+            // Always drawn: this is the only place that spells out what the probe
+            // is measuring, so it must not be skipped in the full-screen close-up.
+            const lines = probeReadout(g, p);
+            const padX = 9, padY = 7, lineH = 13;
 
-            ctx.font = '10px system-ui';
-            const boxW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 16;
+            let textW = 0;
+            for (const line of lines) {
+                ctx.font = line.font;
+                textW = Math.max(textW, ctx.measureText(line.text).width);
+            }
+            const maxBoxW = Math.max(120, (g.rightX - 18) - (g.dx + 4));
+            const boxW = Math.min(textW + padX * 2, maxBoxW);
+            const boxH = padY * 2 + lineH * lines.length;
+
+            // The readout prefers the right of the marker, but never covers the
+            // screen strip the numbers refer to.
+            const rightLimit = g.rightX - 18;
             let bx = p.x + 14;
-            if (bx + boxW > g.dx + g.dw) bx = p.x - 14 - boxW;
-            const by = clamp(p.y - 26, g.dy + 2, g.dy + g.dh - 34);
+            if (bx + boxW > rightLimit) bx = p.x - 14 - boxW;
+            bx = clamp(bx, g.dx + 4, Math.max(g.dx + 4, rightLimit - boxW));
+            const by = clamp(p.y - boxH / 2, g.dy + 2, Math.max(g.dy + 2, g.dy + g.dh - boxH - 2));
+
             ctx.fillStyle = 'rgba(8, 12, 24, 0.88)';
-            roundRectPath(ctx, bx, by, boxW, 32, 6);
+            roundRectPath(ctx, bx, by, boxW, boxH, 6);
             ctx.fill();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
             ctx.lineWidth = 1;
             ctx.stroke();
+
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = 'rgba(232, 244, 255, 0.95)';
-            if (!params.slitsPanelFullscreen) ctx.fillText(line1, bx + 8, by + 10);
-            ctx.fillStyle = 'rgba(160, 178, 214, 0.9)';
-            if (!params.slitsPanelFullscreen) ctx.fillText(line2, bx + 8, by + 23);
+            lines.forEach((line, i) => {
+                ctx.font = line.font;
+                ctx.fillStyle = line.color;
+                const text = clipText(line.text, boxW - padX * 2);
+                ctx.fillText(text, bx + padX, by + padY + lineH * (i + 0.5));
+            });
             ctx.restore();
+        }
+
+        // What the probe is measuring at that point: how many wavelengths of path
+        // difference the two slits create there, which fringe that lands on, and
+        // how that maps onto the real screen (Δy = λL/d, the spacing the data
+        // panel reports). The close-up angles are exaggerated, but the path
+        // difference in wavelengths and the fringe order it implies are exact.
+        const READOUT_TITLE_FONT = '600 11px system-ui';
+        const READOUT_BODY_FONT = '10px system-ui';
+
+        function signedText(value, digits = 0) {
+            const text = value.toFixed(digits);
+            return value > 0 ? '+' + text : text;
+        }
+
+        function probeReadout(g, p) {
+            const lambdaMm = getWavelengthMm();
+            const dMm = getSlitSeparationMm();
+            const LMm = getScreenDistanceMm();
+            const count = g.slits.length;
+
+            if (count < 2) {
+                const lobeMm = 2 * lambdaMm * LMm / getSlitWidthMm();
+                return [
+                    { text: 'Single slit — no interference', font: READOUT_TITLE_FONT, color: 'rgba(233, 245, 255, 0.96)' },
+                    { text: 'One aperture, so there is no second path to compare it with.', font: READOUT_BODY_FONT, color: 'rgba(150, 226, 255, 0.95)' },
+                    { text: `Real screen: one broad lobe, width 2λL/a ≈ ${lobeMm.toFixed(2)} mm`, font: READOUT_BODY_FONT, color: 'rgba(158, 176, 212, 0.92)' }
+                ];
+            }
+
+            // Path difference between neighbouring slits, signed and in wavelengths
+            // (positive below the axis). Bright fringes sit on integer values.
+            const r1 = Math.hypot(p.x - g.barrierX, p.y - g.slits[0]);
+            const r2 = Math.hypot(p.x - g.barrierX, p.y - g.slits[1]);
+            const delta = (r2 - r1) / g.lambdaPx;
+            const phase = Math.PI * delta;
+            const order = Math.round(delta);
+            const spacingMm = lambdaMm * LMm / dMm;
+
+            const sinPhase = Math.sin(phase);
+            const intensity = count === 2
+                ? Math.cos(phase) * Math.cos(phase)
+                : Math.abs(sinPhase) < 1e-9
+                    ? 1
+                    : Math.pow(Math.sin(count * phase) / (count * sinPhase), 2);
+            const i0 = `I/I₀ ≈ ${intensity.toFixed(2)}`;
+            const slitNote = count > 2 ? ` · ${count} slits` : '';
+
+            let verdict, screenNote;
+            if (intensity >= 0.65) {
+                verdict = `Bright fringe · m = ${signedText(order)}${slitNote} · ${i0}`;
+                screenNote = `Real screen: that fringe sits at y = m·λL/d ≈ ${(order * spacingMm).toFixed(2)} mm`;
+            } else if (intensity <= 0.05) {
+                const low = Math.floor(delta);
+                verdict = `Dark minimum · Δ = ${signedText(delta, 2)} λ${slitNote} · ${i0}`;
+                screenNote = `Real screen: midway between m = ${signedText(low)} and m = ${signedText(low + 1)}`;
+            } else {
+                verdict = `In between fringes · Δ = ${signedText(delta, 2)} λ${slitNote} · ${i0}`;
+                screenNote = `Real screen: bright fringes are Δy = λL/d ≈ ${spacingMm.toFixed(2)} mm apart`;
+            }
+
+            return [
+                { text: `Path difference Δ = ${signedText(delta, 2)} λ`, font: READOUT_TITLE_FONT, color: 'rgba(233, 245, 255, 0.96)' },
+                { text: verdict, font: READOUT_BODY_FONT, color: 'rgba(150, 226, 255, 0.95)' },
+                { text: screenNote, font: READOUT_BODY_FONT, color: 'rgba(158, 176, 212, 0.92)' }
+            ];
         }
 
         function drawCloseupFooter(r, g) {
@@ -3213,18 +3347,32 @@
             const fringeMm = params.numSlits > 1 ? (lambdaMm * LMm / dMm) : 0;
             const realFringes = fringeMm > 0 ? Math.round(2 * SCREEN_HALF_RANGE_MM / fringeMm) : 0;
 
+            const textW = r.w - 36;
             ctx.font = '10.5px system-ui';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillStyle = 'rgba(146, 162, 200, 0.85)';
-            ctx.fillText(
+            ctx.fillText(clipText(
                 `Wavefronts are drawn ×${formatFactor(exaggeration)} too big: λ = ${lambdaMm.toFixed(5)} mm is ${Math.round(dMm / lambdaMm).toLocaleString()}× smaller than the ${dMm.toFixed(2)} mm slit gap, so it cannot be drawn to scale next to it.`,
-                r.x + 18, r.y + r.h - 34);
+                textW), r.x + 18, r.y + r.h - 34);
             ctx.fillStyle = 'rgba(120, 136, 175, 0.8)';
-            ctx.fillText(params.numSlits > 1
+            ctx.fillText(clipText(params.numSlits > 1
                 ? `Real screen at L = ${(LMm / 1000).toFixed(2)} m: Δy = λL/d = ${fringeMm.toFixed(2)} mm → about ${realFringes} bright fringes across the visible screen. Click anywhere in the picture to measure a path difference.`
                 : `One slit: no fringes, just a single diffraction lobe about ${(2 * lambdaMm * LMm / getSlitWidthMm()).toFixed(2)} mm wide at the screen.`,
-                r.x + 18, r.y + r.h - 19);
+                textW), r.x + 18, r.y + r.h - 19);
+        }
+
+        // Trim a caption to the space it actually has, so long explanatory lines
+        // never run off the edge of a narrow canvas. Assumes the caller already
+        // set ctx.font / textAlign.
+        function clipText(text, maxWidth) {
+            if (maxWidth <= 0) return '';
+            if (ctx.measureText(text).width <= maxWidth) return text;
+            let trimmed = text;
+            while (trimmed.length > 1 && ctx.measureText(trimmed + '…').width > maxWidth) {
+                trimmed = trimmed.slice(0, -1);
+            }
+            return trimmed + '…';
         }
 
         function formatFactor(value) {
@@ -3591,26 +3739,36 @@
             camera.targetZ = Math.max(-400, Math.min(-80, camera.targetZ));
         }, { passive: false });
 
-        // Expand/collapse either panel independently.
+        // Expand/collapse either panel independently. Both start minimized (the
+        // collapsed class is in the markup), so the first click opens them.
+        function setPanelCollapsed(button, collapsed) {
+            const panel = button.closest('.control-panel, .info-panel');
+            if (!panel) return;
+            panel.classList.toggle('collapsed', collapsed);
+            button.setAttribute('aria-expanded', String(!collapsed));
+            const panelName = panel.id === 'controlPanel' ? 'experiment options' : 'experiment data';
+            button.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Minimize'} ${panelName}`);
+            button.title = `${collapsed ? 'Expand' : 'Minimize'} ${panelName}`;
+            button.textContent = collapsed ? '+' : '−';
+            requestAnimationFrame(() => {
+                updateLayout();
+                if (viewMode === 'slits') updateSlitsCamera();
+                if (!collapsed && panel.id === 'infoPanel') {
+                    // The graph canvas is display:none while collapsed, so it has
+                    // no measurable size; resize() re-syncs it before drawing.
+                    resize();
+                    drawIntensityGraph();
+                }
+            });
+        }
+
         document.querySelectorAll('.panel-collapse').forEach(button => {
             button.addEventListener('click', () => {
-                const panel = button.closest('.control-panel, .info-panel');
                 const expanded = button.getAttribute('aria-expanded') === 'true';
-                panel.classList.toggle('collapsed', expanded);
-                button.setAttribute('aria-expanded', String(!expanded));
-                const panelName = panel.id === 'controlPanel' ? 'experiment options' : 'experiment data';
-                button.setAttribute('aria-label', `${expanded ? 'Expand' : 'Minimize'} ${panelName}`);
-                button.title = `${expanded ? 'Expand' : 'Minimize'} ${panelName}`;
-                button.textContent = expanded ? '+' : '−';
-                requestAnimationFrame(() => {
-                    updateLayout();
-                    if (viewMode === 'slits') updateSlitsCamera();
-                    if (!expanded && panel.id === 'infoPanel') {
-                        resize();
-                        drawIntensityGraph();
-                    }
-                });
+                setPanelCollapsed(button, expanded);
             });
+            // Apply the startup state to every panel that ships minimized.
+            setPanelCollapsed(button, button.closest('.control-panel, .info-panel').classList.contains('collapsed'));
         });
 
         // Particle type buttons
